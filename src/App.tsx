@@ -99,45 +99,6 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          className="w-8 h-8 border-4 border-violet-600 border-t-transparent rounded-full"
-        />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Auth />;
-  }
-
-  return (
-    <ThemeProvider>
-      <ErrorBoundary>
-        <CompanyProvider>
-          <AppContent />
-        </CompanyProvider>
-      </ErrorBoundary>
-    </ThemeProvider>
-  );
-}
-
-function AppContent() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  if (loading) {
-    return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center transition-colors duration-300">
         <motion.div 
           animate={{ rotate: 360 }}
@@ -148,11 +109,19 @@ function AppContent() {
     );
   }
 
-  if (!user) {
-    return <Auth />;
-  }
-
-  return <DashboardContent />;
+  return (
+    <ThemeProvider>
+      <ErrorBoundary>
+        {user ? (
+          <CompanyProvider>
+            <DashboardContent />
+          </CompanyProvider>
+        ) : (
+          <Auth />
+        )}
+      </ErrorBoundary>
+    </ThemeProvider>
+  );
 }
 
 function DashboardContent() {

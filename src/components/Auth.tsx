@@ -33,39 +33,54 @@ export function Auth() {
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
+    setError('');
     try {
       await signInWithPopup(auth, provider);
     } catch (err: any) {
-      setError(err.message);
+      console.error('Google Sign In Error:', err);
+      if (err.code === 'auth/unauthorized-domain') {
+        setError('Este domínio não está autorizado no Firebase Console. Adicione o domínio do Vercel aos domínios autorizados.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('O popup foi bloqueado pelo navegador. Por favor, permita popups para este site.');
+      } else if (err.code === 'auth/cancelled-popup-request') {
+        // Ignore if user closed the popup
+      } else {
+        setError(`Erro ao entrar com Google: ${err.message}`);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 transition-colors duration-300">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-violet-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-violet-200">
-            <span className="text-white font-bold text-2xl">A</span>
+          <div className="w-16 h-16 mx-auto mb-4 relative">
+            <img 
+              src="https://i.ibb.co/Y788pF9M/Apex-Flow.png" 
+              alt="ApexFlow Logo" 
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+            />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">ApexFlow</h1>
-          <p className="text-slate-500 text-sm mt-1">Gestão inteligente para sua agência</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">ApexFlow</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Gestão inteligente para sua agência</p>
         </div>
 
-        <Card className="p-8">
+        <Card className="p-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <form onSubmit={handleAuth} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Email</label>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input 
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
                   placeholder="seu@email.com"
                   required
                 />
@@ -73,14 +88,14 @@ export function Auth() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Senha</label>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Senha</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input 
                   type="password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
                   placeholder="••••••••"
                   required
                 />
@@ -91,7 +106,7 @@ export function Auth() {
 
             <button 
               type="submit"
-              className="w-full bg-violet-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 flex items-center justify-center gap-2"
+              className="w-full bg-violet-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none flex items-center justify-center gap-2"
             >
               {isLogin ? <LogIn className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
               {isLogin ? 'Entrar' : 'Criar Conta'}
@@ -100,26 +115,26 @@ export function Auth() {
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-100"></div>
+              <div className="w-full border-t border-slate-100 dark:border-slate-800"></div>
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-slate-400 font-medium">Ou continue com</span>
+              <span className="bg-white dark:bg-slate-900 px-2 text-slate-400 dark:text-slate-500 font-medium transition-colors">Ou continue com</span>
             </div>
           </div>
 
           <button 
             onClick={handleGoogleSignIn}
-            className="w-full bg-white border border-slate-200 text-slate-600 py-2 rounded-lg font-bold text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 py-2 rounded-lg font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
           >
             <Chrome className="w-4 h-4" />
             Google
           </button>
 
-          <p className="text-center text-xs text-slate-500 mt-6">
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-6">
             {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}
             <button 
               onClick={() => setIsLogin(!isLogin)}
-              className="ml-1 text-violet-600 font-bold hover:underline"
+              className="ml-1 text-violet-600 dark:text-violet-400 font-bold hover:underline"
             >
               {isLogin ? 'Cadastre-se' : 'Faça login'}
             </button>

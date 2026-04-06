@@ -47,7 +47,7 @@ interface ProjectsSectionProps {
 }
 
 export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -56,13 +56,15 @@ export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
     type: 'Site',
     value: 0,
     status: 'negotiation',
-    deadline: ''
+    deadline: '',
+    companyId: ''
   });
 
   const handleAddProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCompanyId) {
-      alert('Selecione uma empresa específica para adicionar um projeto.');
+    const companyId = selectedCompanyId || formData.companyId;
+    if (!companyId) {
+      alert('Por favor, selecione uma empresa para vincular este projeto.');
       return;
     }
     setLoading(true);
@@ -70,7 +72,7 @@ export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
       const projectRes = await addProject({
         ...formData,
         value: Number(formData.value)
-      }, selectedCompanyId);
+      }, companyId);
 
       if (projectRes) {
         // Automation: Generate standard checklist tasks
@@ -89,12 +91,12 @@ export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
             projectId: projectRes.id,
             clientId: formData.clientId,
             responsible: 'Equipe'
-          }, selectedCompanyId);
+          }, companyId);
         }
       }
 
       setIsModalOpen(false);
-      setFormData({ name: '', clientId: '', type: 'Site', value: 0, status: 'negotiation', deadline: '' });
+      setFormData({ name: '', clientId: '', type: 'Site', value: 0, status: 'negotiation', deadline: '', companyId: '' });
     } catch (error) {
       console.error(error);
     } finally {
@@ -142,13 +144,7 @@ export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white transition-colors">Projetos (One-Time)</h3>
         <button 
-          onClick={() => {
-            if (!selectedCompanyId) {
-              alert('Selecione uma empresa específica para adicionar projetos.');
-              return;
-            }
-            setIsModalOpen(true);
-          }}
+          onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none"
         >
           <Plus className="w-4 h-4" />
@@ -297,6 +293,23 @@ export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
         title="Novo Projeto"
       >
         <form onSubmit={handleAddProject} className="space-y-4">
+          {!selectedCompanyId && (
+            <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Vincular à Empresa</label>
+              <select 
+                required
+                value={formData.companyId}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+              >
+                <option value="">Selecione uma empresa...</option>
+                {companies.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Nome do Projeto</label>
             <div className="relative">

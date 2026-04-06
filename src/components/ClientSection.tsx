@@ -15,27 +15,29 @@ interface ClientSectionProps {
 }
 
 export function ClientSection({ clients, projects, contracts }: ClientSectionProps) {
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     company: '',
     status: 'active',
-    type: 'recurrent'
+    type: 'recurrent',
+    companyId: ''
   });
 
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCompanyId) {
-      alert('Selecione uma empresa específica para adicionar um cliente.');
+    const companyId = selectedCompanyId || formData.companyId;
+    if (!companyId) {
+      alert('Por favor, selecione uma empresa para vincular este cliente.');
       return;
     }
     setLoading(true);
     try {
-      await addClient(formData, selectedCompanyId);
+      await addClient(formData, companyId);
       setIsModalOpen(false);
-      setFormData({ name: '', company: '', status: 'active', type: 'recurrent' });
+      setFormData({ name: '', company: '', status: 'active', type: 'recurrent', companyId: '' });
     } catch (error) {
       console.error(error);
     } finally {
@@ -56,13 +58,7 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white transition-colors">Gestão de Clientes</h3>
         <button 
-          onClick={() => {
-            if (!selectedCompanyId) {
-              alert('Selecione uma empresa específica para adicionar clientes.');
-              return;
-            }
-            setIsModalOpen(true);
-          }}
+          onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none"
         >
           <Plus className="w-4 h-4" />
@@ -218,6 +214,24 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
         title="Cadastrar Novo Cliente"
       >
         <form onSubmit={handleAddClient} className="space-y-4">
+          {!selectedCompanyId && (
+            <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Vincular à Empresa</label>
+              <select 
+                required
+                value={formData.companyId}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+              >
+                <option value="">Selecione uma empresa...</option>
+                {companies.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-400 mt-1">O cliente deve estar vinculado a uma de suas empresas.</p>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Nome do Contato</label>
             <div className="relative">

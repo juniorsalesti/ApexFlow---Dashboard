@@ -61,7 +61,7 @@ interface TasksSectionProps {
 }
 
 export function TasksSection({ tasks, clients, projects, leads }: TasksSectionProps) {
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompanyId, companies } = useCompany();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -77,7 +77,8 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
     clientId: '',
     projectId: '',
     leadId: '',
-    deadline: ''
+    deadline: '',
+    companyId: ''
   });
 
   const sensors = useSensors(
@@ -112,8 +113,9 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
 
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCompanyId) {
-      alert('Selecione uma empresa específica para gerenciar tarefas.');
+    const companyId = selectedCompanyId || formData.companyId;
+    if (!companyId) {
+      alert('Por favor, selecione uma empresa para vincular esta tarefa.');
       return;
     }
     setLoading(true);
@@ -121,7 +123,7 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
       if (selectedTask) {
         await updateTask(selectedTask.id, formData);
       } else {
-        await addTask(formData, selectedCompanyId);
+        await addTask(formData, companyId);
       }
       setIsModalOpen(false);
       resetForm();
@@ -143,7 +145,8 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
       clientId: '',
       projectId: '',
       leadId: '',
-      deadline: ''
+      deadline: '',
+      companyId: ''
     });
     setSelectedTask(null);
   };
@@ -196,13 +199,7 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
           <p className="text-sm text-slate-500 dark:text-slate-400 transition-colors">Organize sua semana e acompanhe a produtividade</p>
         </div>
         <button 
-          onClick={() => {
-            if (!selectedCompanyId) {
-              alert('Selecione uma empresa específica para adicionar tarefas.');
-              return;
-            }
-            setIsModalOpen(true);
-          }}
+          onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none"
         >
           <Plus className="w-4 h-4" />
@@ -283,6 +280,23 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
         title={selectedTask ? "Editar Tarefa" : "Nova Tarefa"}
       >
         <form onSubmit={handleSaveTask} className="space-y-4">
+          {!selectedCompanyId && !selectedTask && (
+            <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Vincular à Empresa</label>
+              <select 
+                required
+                value={formData.companyId}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:text-white transition-colors"
+              >
+                <option value="">Selecione uma empresa...</option>
+                {companies.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Título</label>
             <input

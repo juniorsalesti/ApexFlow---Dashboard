@@ -72,7 +72,7 @@ interface CRMSectionProps {
 }
 
 export function CRMSection({ leads, clients, projects, contracts }: CRMSectionProps) {
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompanyId, companies } = useCompany();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWonModalOpen, setIsWonModalOpen] = useState(false);
@@ -87,7 +87,8 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
     value: 0,
     status: 'lead',
     owner: '',
-    notes: ''
+    notes: '',
+    companyId: ''
   });
 
   const [wonFormData, setWonFormData] = useState({
@@ -125,13 +126,14 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
 
   const handleAddLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCompanyId) {
-      alert('Por favor, selecione uma empresa específica para adicionar um lead.');
+    const companyId = selectedCompanyId || formData.companyId;
+    if (!companyId) {
+      alert('Por favor, selecione uma empresa para vincular este lead.');
       return;
     }
     setLoading(true);
     try {
-      await addLead(formData, selectedCompanyId);
+      await addLead(formData, companyId);
       setIsModalOpen(false);
       setFormData({
         name: '',
@@ -142,7 +144,8 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
         value: 0,
         status: 'lead',
         owner: '',
-        notes: ''
+        notes: '',
+        companyId: ''
       });
     } catch (error) {
       console.error(error);
@@ -255,13 +258,7 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
           <p className="text-sm text-slate-500 dark:text-slate-400 transition-colors">Gerencie seus leads e converta em clientes</p>
         </div>
         <button 
-          onClick={() => {
-            if (!selectedCompanyId) {
-              alert('Selecione uma empresa específica para adicionar leads.');
-              return;
-            }
-            setIsModalOpen(true);
-          }}
+          onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none"
         >
           <Plus className="w-4 h-4" />
@@ -311,6 +308,23 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
       {/* New Lead Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Novo Lead">
         <form onSubmit={handleAddLead} className="space-y-4">
+          {!selectedCompanyId && (
+            <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Vincular à Empresa</label>
+              <select 
+                required
+                value={formData.companyId}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+              >
+                <option value="">Selecione uma empresa...</option>
+                {companies.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Nome</label>
