@@ -184,7 +184,12 @@ export const addProject = async (data: any, companyId: string) => {
   if (!userId) throw new Error('User not authenticated');
   
   try {
-    return await addDoc(collection(db, projectsCol), { ...data, userId, companyId, startDate: new Date().toISOString() });
+    return await addDoc(collection(db, projectsCol), { 
+      ...data, 
+      userId, 
+      companyId, 
+      startDate: data.startDate || new Date().toISOString() 
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, projectsCol);
   }
@@ -196,6 +201,15 @@ export const updateProject = async (id: string, data: any) => {
     return await updateDoc(docRef, data);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, projectsCol);
+  }
+};
+
+export const deleteProject = async (id: string) => {
+  try {
+    const docRef = doc(db, projectsCol, id);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, projectsCol);
   }
 };
 

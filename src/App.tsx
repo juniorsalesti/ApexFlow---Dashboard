@@ -165,7 +165,7 @@ function DashboardContent() {
   const renderSection = () => {
     switch (activeTab) {
       case 'overview': return <OverviewSection clients={clients} projects={filteredProjects} contracts={filteredContracts} financial={filteredFinancial} allFinancial={financial} selectedMonth={selectedMonth} selectedYear={selectedYear} period={period} />;
-      case 'financial': return <FinancialSection financial={filteredFinancial} allFinancial={financial} />;
+      case 'financial': return <FinancialSection financial={filteredFinancial} allFinancial={financial} selectedMonth={selectedMonth} selectedYear={selectedYear} period={period} />;
       case 'clients': return <ClientSection clients={clients} projects={projects} contracts={contracts} />;
       case 'growth': return <GrowthSection clients={clients} projects={projects} financial={filteredFinancial} allFinancial={financial} />;
       case 'operational': return <OperationalSection projects={filteredProjects} />;
@@ -310,7 +310,7 @@ function DashboardContent() {
                       onChange={(e) => setSelectedYear(Number(e.target.value))}
                       className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-violet-500"
                     >
-                      {[2024, 2025, 2026].map(y => (
+                      {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(y => (
                         <option key={y} value={y}>{y}</option>
                       ))}
                     </select>

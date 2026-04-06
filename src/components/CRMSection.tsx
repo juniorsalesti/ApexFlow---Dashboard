@@ -198,7 +198,8 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
             name: `${selectedLead.company} - ${wonFormData.projectType}`,
             type: wonFormData.projectType,
             value: wonFormData.projectValue,
-            status: 'execution'
+            status: 'execution',
+            origin: 'crm'
           }, selectedCompanyId);
         }
       }

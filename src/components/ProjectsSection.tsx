@@ -13,14 +13,20 @@ import {
   Plus,
   DollarSign,
   Calendar,
-  Building2
+  Building2,
+  Edit2,
+  Trash2,
+  Eye,
+  ExternalLink,
+  History,
+  User
 } from 'lucide-react';
 import { Card } from './ui/Card';
 import { StatCard } from './ui/StatCard';
 import { Badge } from './ui/Badge';
 import { Modal } from './ui/Modal';
-import { formatCurrency, formatPercent } from '../lib/utils';
-import { addProject, addTask } from '../services/db';
+import { formatCurrency, formatPercent, cn } from '../lib/utils';
+import { addProject, addTask, updateProject, deleteProject } from '../services/db';
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -50,6 +56,10 @@ interface ProjectsSectionProps {
 export function ProjectsSection({ projects, financial, allFinancial }: ProjectsSectionProps) {
   const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -57,25 +67,27 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
     type: 'Site',
     value: 0,
     status: 'negotiation',
+    startDate: new Date().toISOString().split('T')[0],
     deadline: '',
-    companyId: ''
+    deliveryDate: '',
+    companyId: '',
+    origin: 'manual'
   });
 
   const handleAddProject = async (e: React.FormEvent) => {
     e.preventDefault();
     const companyId = selectedCompanyId || formData.companyId;
-    if (!companyId) {
-      return;
-    }
+    if (!companyId) return;
+    
     setLoading(true);
     try {
       const projectRes = await addProject({
         ...formData,
-        value: Number(formData.value)
+        value: Number(formData.value),
+        origin: 'manual'
       }, companyId);
 
       if (projectRes) {
-        // Automation: Generate standard checklist tasks
         const standardTasks = [
           { title: `Briefing: ${formData.name}`, description: 'Reunião inicial e coleta de materiais', date: 'Segunda-feira', priority: 'alta' },
           { title: `Planejamento: ${formData.name}`, description: 'Definição de cronograma e escopo detalhado', date: 'Terça-feira', priority: 'média' },
@@ -96,11 +108,75 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
       }
 
       setIsModalOpen(false);
-      setFormData({ name: '', clientId: '', type: 'Site', value: 0, status: 'negotiation', deadline: '', companyId: '' });
+      setFormData({ name: '', clientId: '', type: 'Site', value: 0, status: 'negotiation', startDate: new Date().toISOString().split('T')[0], deadline: '', deliveryDate: '', companyId: '', origin: 'manual' });
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProject) return;
+    
+    setLoading(true);
+    try {
+      await updateProject(selectedProject.id, {
+        ...formData,
+        value: Number(formData.value)
+      });
+      setIsEditModalOpen(false);
+      setSelectedProject(null);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!selectedProject) return;
+    
+    setLoading(true);
+    try {
+      await deleteProject(selectedProject.id);
+      setIsDeleteModalOpen(false);
+      setSelectedProject(null);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditModal = (project: any) => {
+    setSelectedProject(project);
+    setFormData({
+      name: project.name || '',
+      clientId: project.clientId || '',
+      type: project.type || 'Site',
+      value: project.value || 0,
+      status: project.status || 'negotiation',
+      startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
+      deadline: project.deadline || '',
+      deliveryDate: project.deliveryDate || '',
+      companyId: project.companyId || '',
+      origin: project.origin || 'manual'
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const openDetailsModal = (project: any) => {
+    setSelectedProject(project);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleUpdateStatus = async (projectId: string, newStatus: string) => {
+    try {
+      await updateProject(projectId, { status: newStatus });
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -305,13 +381,32 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
               
               <div className="space-y-3">
                 {projects.filter(p => p.status === stage.id).map(project => (
-                  <div key={project.id} className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:border-violet-300 dark:hover:border-violet-700 transition-colors cursor-pointer group">
+                  <div key={project.id} className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:border-violet-300 dark:hover:border-violet-700 transition-colors cursor-pointer group relative">
                     <div className="flex justify-between items-start mb-2">
-                      <h5 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{project.name}</h5>
-                      <Badge variant={project.status === 'delayed' ? 'risk' : 'default'}>{project.type}</Badge>
+                      <div onClick={() => openDetailsModal(project)} className="flex-1">
+                        <h5 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{project.name}</h5>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant={project.status === 'delayed' ? 'risk' : 'default'}>{project.type}</Badge>
+                          {project.origin === 'crm' && (
+                            <Badge variant="default" className="bg-blue-100 text-blue-600 border-blue-200">CRM</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={(e) => { e.stopPropagation(); openEditModal(project); }} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-violet-600 transition-colors">
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedProject(project); setIsDeleteModalOpen(true); }} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-rose-600 transition-colors">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mt-3">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(project.value)}</span>
+                      <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                        <Calendar className="w-3 h-3" />
+                        {project.deadline ? new Date(project.deadline).toLocaleDateString('pt-BR') : 'Sem prazo'}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -326,13 +421,14 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
         </div>
       </Card>
 
+      {/* Modals */}
       <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title="Novo Projeto"
+        isOpen={isModalOpen || isEditModalOpen} 
+        onClose={() => { setIsModalOpen(false); setIsEditModalOpen(false); setSelectedProject(null); }} 
+        title={isEditModalOpen ? "Editar Projeto" : "Novo Projeto"}
       >
-        <form onSubmit={handleAddProject} className="space-y-4">
-          {!selectedCompanyId && (
+        <form onSubmit={isEditModalOpen ? handleEditProject : handleAddProject} className="space-y-4">
+          {!selectedCompanyId && !isEditModalOpen && (
             <div>
               <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Vincular à Empresa</label>
               <select 
@@ -408,27 +504,188 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Prazo</label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-              <input 
-                type="date" 
-                value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
-              />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Data de Início</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <input 
+                  type="date" 
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Prazo Final</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <input 
+                  type="date" 
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+                />
+              </div>
             </div>
           </div>
+
+          {formData.status === 'delivered' && (
+            <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Data de Entrega</label>
+              <div className="relative">
+                <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <input 
+                  type="date" 
+                  value={formData.deliveryDate}
+                  onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+                />
+              </div>
+            </div>
+          )}
 
           <button 
             type="submit"
             disabled={loading}
             className="w-full bg-violet-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-50"
           >
-            {loading ? 'Salvando...' : 'Criar Projeto'}
+            {loading ? 'Salvando...' : (isEditModalOpen ? 'Atualizar Projeto' : 'Criar Projeto')}
           </button>
         </form>
+      </Modal>
+
+      {/* Details Modal */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onClose={() => { setIsDetailsModalOpen(false); setSelectedProject(null); }}
+        title="Detalhes do Projeto"
+      >
+        {selectedProject && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="text-xl font-bold text-slate-900 dark:text-white">{selectedProject.name}</h4>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant="default">{selectedProject.type}</Badge>
+                  <Badge variant={selectedProject.status === 'delayed' ? 'risk' : 'default'}>
+                    {pipelineStages.find(s => s.id === selectedProject.status)?.label}
+                  </Badge>
+                  {selectedProject.origin === 'crm' && (
+                    <Badge variant="default" className="bg-blue-100 text-blue-600 border-blue-200">Origem: CRM</Badge>
+                  )}
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Valor do Projeto</p>
+                <p className="text-2xl font-bold text-violet-600">{formatCurrency(selectedProject.value)}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 py-6 border-y border-slate-100 dark:border-slate-800">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <Calendar className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data de Início</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      {selectedProject.startDate ? new Date(selectedProject.startDate).toLocaleDateString('pt-BR') : 'Não informada'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <Clock className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Prazo Final</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      {selectedProject.deadline ? new Date(selectedProject.deadline).toLocaleDateString('pt-BR') : 'Sem prazo'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <CheckCircle2 className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data de Entrega</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      {selectedProject.deliveryDate ? new Date(selectedProject.deliveryDate).toLocaleDateString('pt-BR') : 'Ainda não entregue'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <History className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Origem do Registro</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      {selectedProject.origin === 'crm' ? 'Automático (CRM)' : 'Manual'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button 
+                onClick={() => { setIsDetailsModalOpen(false); openEditModal(selectedProject); }}
+                className="flex-1 flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-2 rounded-lg font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+                Editar Projeto
+              </button>
+              <button 
+                onClick={() => { setIsDetailsModalOpen(false); setIsDeleteModalOpen(true); }}
+                className="flex-1 flex items-center justify-center gap-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 py-2 rounded-lg font-bold text-sm hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Excluir Projeto
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => { setIsDeleteModalOpen(false); setSelectedProject(null); }}
+        title="Excluir Projeto"
+      >
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6 text-rose-600 dark:text-rose-400" />
+          </div>
+          <div>
+            <h4 className="text-lg font-bold text-slate-900 dark:text-white">Tem certeza?</h4>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Esta ação não pode ser desfeita. O projeto <span className="font-bold text-slate-700 dark:text-slate-300">"{selectedProject?.name}"</span> será removido permanentemente.
+            </p>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <button 
+              onClick={() => { setIsDeleteModalOpen(false); setSelectedProject(null); }}
+              className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button 
+              onClick={handleDeleteProject}
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-rose-600 text-white rounded-lg font-bold text-sm hover:bg-rose-700 transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Excluindo...' : 'Sim, Excluir'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

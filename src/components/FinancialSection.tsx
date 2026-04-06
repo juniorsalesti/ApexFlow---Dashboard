@@ -25,9 +25,12 @@ import { addFinancialEntry, updateFinancialEntry, deleteFinancialEntry } from '.
 interface FinancialSectionProps {
   financial: any[];
   allFinancial: any[];
+  selectedMonth: number;
+  selectedYear: number;
+  period: string;
 }
 
-export function FinancialSection({ financial, allFinancial }: FinancialSectionProps) {
+export function FinancialSection({ financial, allFinancial, selectedMonth, selectedYear, period }: FinancialSectionProps) {
   const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -122,33 +125,51 @@ export function FinancialSection({ financial, allFinancial }: FinancialSectionPr
   // Process data for charts
   const monthlyData = useMemo(() => {
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    
-    // Show last 12 months trend
     const data = [];
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const m = d.getMonth();
-      const y = d.getFullYear();
-      
-      const monthEntries = allFinancial.filter(f => {
-        const entryDate = new Date(f.date);
-        return entryDate.getMonth() === m && entryDate.getFullYear() === y;
-      });
 
-      const revenue = monthEntries.reduce((acc, curr) => acc + (curr.type === 'income' ? curr.value : 0), 0);
-      const expenses = monthEntries.reduce((acc, curr) => acc + (curr.type === 'expense' ? curr.value : 0), 0);
-      
-      data.push({ 
-        month: months[m], 
-        revenue, 
-        expenses 
-      });
+    if (period === 'Personalizado') {
+      // Show all months of the selected year
+      for (let m = 0; m < 12; m++) {
+        const monthEntries = allFinancial.filter(f => {
+          const entryDate = new Date(f.date);
+          return entryDate.getMonth() === m && entryDate.getFullYear() === selectedYear;
+        });
+
+        const revenue = monthEntries.reduce((acc, curr) => acc + (curr.type === 'income' ? curr.value : 0), 0);
+        const expenses = monthEntries.reduce((acc, curr) => acc + (curr.type === 'expense' ? curr.value : 0), 0);
+        
+        data.push({ 
+          month: months[m], 
+          revenue, 
+          expenses 
+        });
+      }
+    } else {
+      // Show last 12 months trend from now
+      const now = new Date();
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const m = d.getMonth();
+        const y = d.getFullYear();
+        
+        const monthEntries = allFinancial.filter(f => {
+          const entryDate = new Date(f.date);
+          return entryDate.getMonth() === m && entryDate.getFullYear() === y;
+        });
+
+        const revenue = monthEntries.reduce((acc, curr) => acc + (curr.type === 'income' ? curr.value : 0), 0);
+        const expenses = monthEntries.reduce((acc, curr) => acc + (curr.type === 'expense' ? curr.value : 0), 0);
+        
+        data.push({ 
+          month: months[m], 
+          revenue, 
+          expenses 
+        });
+      }
     }
 
     return data;
-  }, [allFinancial]);
+  }, [allFinancial, selectedYear, period]);
 
   const categoryData = useMemo(() => {
     const counts = financial.reduce((acc: any, curr) => {
