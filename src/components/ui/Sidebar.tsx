@@ -88,7 +88,13 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: SidebarPro
       </nav>
 
       <div className="p-4 border-t border-slate-800 space-y-1">
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-900 transition-colors">
+        <button 
+          onClick={() => setActiveTab('settings')}
+          className={cn(
+            "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+            activeTab === 'settings' ? 'bg-violet-600 text-white' : 'hover:bg-slate-900'
+          )}
+        >
           <Settings className="w-5 h-5 text-slate-400" />
           <span className="text-sm font-medium">Configurações</span>
         </button>

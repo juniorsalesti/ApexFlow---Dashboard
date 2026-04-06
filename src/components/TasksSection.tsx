@@ -119,16 +119,21 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
       return;
     }
     setLoading(true);
+    console.log('Saving task...', { formData, companyId });
     try {
       if (selectedTask) {
+        console.log('Updating task...', selectedTask.id);
         await updateTask(selectedTask.id, formData);
       } else {
-        await addTask(formData, companyId);
+        console.log('Adding new task...');
+        const result = await addTask(formData, companyId);
+        console.log('Task added:', result);
       }
       setIsModalOpen(false);
       resetForm();
     } catch (error) {
-      console.error(error);
+      console.error('Error saving task:', error);
+      alert('Erro ao salvar tarefa. Verifique o console.');
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './lib/firebase';
 import { 
@@ -21,6 +21,7 @@ import { CommercialSection } from './components/CommercialSection';
 import { ProjectsSection } from './components/ProjectsSection';
 import { CRMSection } from './components/CRMSection';
 import { TasksSection } from './components/TasksSection';
+import { SettingsSection } from './components/SettingsSection';
 import { Auth } from './components/Auth';
 import { CompanyProvider, useCompany } from './contexts/CompanyContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -161,16 +162,17 @@ function DashboardContent() {
 
   const renderSection = () => {
     switch (activeTab) {
-      case 'overview': return <OverviewSection clients={clients} projects={projects} contracts={contracts} financial={financial} />;
-      case 'financial': return <FinancialSection financial={financial} />;
+      case 'overview': return <OverviewSection clients={clients} projects={projects} contracts={contracts} financial={filteredFinancial} />;
+      case 'financial': return <FinancialSection financial={filteredFinancial} />;
       case 'clients': return <ClientSection clients={clients} projects={projects} contracts={contracts} />;
-      case 'growth': return <GrowthSection clients={clients} projects={projects} financial={financial} />;
+      case 'growth': return <GrowthSection clients={clients} projects={projects} financial={filteredFinancial} />;
       case 'operational': return <OperationalSection projects={projects} />;
       case 'commercial': return <CommercialSection commercial={commercial} />;
       case 'crm': return <CRMSection leads={leads} clients={clients} projects={projects} contracts={contracts} />;
-      case 'projects': return <ProjectsSection projects={projects} financial={financial} />;
+      case 'projects': return <ProjectsSection projects={projects} financial={filteredFinancial} />;
       case 'tasks': return <TasksSection tasks={tasks} clients={clients} projects={projects} leads={leads} />;
-      default: return <OverviewSection clients={clients} projects={projects} contracts={contracts} financial={financial} />;
+      case 'settings': return <SettingsSection />;
+      default: return <OverviewSection clients={clients} projects={projects} contracts={contracts} financial={filteredFinancial} />;
     }
   };
 
@@ -185,8 +187,45 @@ function DashboardContent() {
       case 'crm': return 'CRM / Pipeline de Vendas';
       case 'projects': return 'Projetos (One-Time)';
       case 'tasks': return 'Gestão de Tarefas';
+      case 'settings': return 'Configurações';
       default: return 'Dashboard';
     }
+  };
+
+  const filteredFinancial = useMemo(() => {
+    const now = new Date();
+    let days = 30;
+    if (period === 'Últimos 7 dias') days = 7;
+    if (period === 'Últimos 90 dias') days = 90;
+    
+    const cutoff = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+    return financial.filter(f => new Date(f.date) >= cutoff);
+  }, [financial, period]);
+
+  const handleExport = () => {
+    const headers = ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor'];
+    const rows = financial.map(f => [
+      new Date(f.date).toLocaleDateString('pt-BR'),
+      f.description || '',
+      f.category,
+      f.type === 'income' ? 'Receita' : 'Despesa',
+      f.value.toString()
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `financeiro_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -214,10 +253,23 @@ function DashboardContent() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <Calendar className="w-3 h-3 md:w-4 md:h-4 text-slate-400" />
-                  <span className="text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300">{period}</span>
-                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                <div className="relative group">
+                  <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    <Calendar className="w-3 h-3 md:w-4 md:h-4 text-slate-400" />
+                    <span className="text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300">{period}</span>
+                    <ChevronDown className="w-3 h-3 text-slate-400" />
+                  </div>
+                  <div className="absolute top-full right-0 mt-1 w-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    {['Últimos 7 dias', 'Últimos 30 dias', 'Últimos 90 dias'].map(p => (
+                      <button 
+                        key={p}
+                        onClick={() => setPeriod(p)}
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 first:rounded-t-lg last:rounded-b-lg"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 
                 <button className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
@@ -225,7 +277,10 @@ function DashboardContent() {
                   <span className="text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300">Filtros</span>
                 </button>
 
-                <button className="flex items-center gap-2 bg-slate-900 dark:bg-violet-600 text-white rounded-lg px-4 py-2 shadow-sm hover:bg-slate-800 dark:hover:bg-violet-700 transition-colors ml-auto lg:ml-0">
+                <button 
+                  onClick={handleExport}
+                  className="flex items-center gap-2 bg-slate-900 dark:bg-violet-600 text-white rounded-lg px-4 py-2 shadow-sm hover:bg-slate-800 dark:hover:bg-violet-700 transition-colors ml-auto lg:ml-0"
+                >
                   <Download className="w-3 h-3 md:w-4 md:h-4" />
                   <span className="text-[10px] md:text-xs font-medium">Exportar</span>
                 </button>

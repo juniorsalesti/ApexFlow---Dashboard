@@ -247,9 +247,32 @@ export const addFinancialEntry = async (data: any, companyId: string) => {
   if (!userId) throw new Error('User not authenticated');
   
   try {
-    return await addDoc(collection(db, financialCol), { ...data, userId, companyId, date: new Date().toISOString() });
+    return await addDoc(collection(db, financialCol), { 
+      ...data, 
+      userId, 
+      companyId, 
+      date: data.date || new Date().toISOString() 
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, financialCol);
+  }
+};
+
+export const updateFinancialEntry = async (id: string, data: any) => {
+  try {
+    const docRef = doc(db, financialCol, id);
+    return await updateDoc(docRef, data);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, financialCol);
+  }
+};
+
+export const deleteFinancialEntry = async (id: string) => {
+  try {
+    const docRef = doc(db, financialCol, id);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, financialCol);
   }
 };
 
