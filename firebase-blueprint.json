@@ -108,6 +108,21 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" }
       },
       "required": ["name", "userId", "createdAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task in the project management system",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Task title" },
+        "description": { "type": "string", "description": "Task description" },
+        "status": { "type": "string", "enum": ["todo", "in-progress", "review", "done"], "description": "Task status" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "Task priority" },
+        "companyId": { "type": "string", "description": "Reference to the company" },
+        "userId": { "type": "string", "description": "Owner of this task record" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" }
+      },
+      "required": ["title", "status", "priority", "companyId", "userId", "createdAt"]
     }
   },
   "firestore": {
@@ -117,6 +132,7 @@
     "financial": { "schema": { "$ref": "FinancialEntry" }, "description": "Collection of financial entries" },
     "commercial": { "schema": { "$ref": "CommercialStats" }, "description": "Collection of commercial stats" },
     "leads": { "schema": { "$ref": "Lead" }, "description": "Collection of sales leads" },
-    "companies": { "schema": { "$ref": "Company" }, "description": "Collection of companies" }
+    "companies": { "schema": { "$ref": "Company" }, "description": "Collection of companies" },
+    "tasks": { "schema": { "$ref": "Task" }, "description": "Collection of tasks" }
   }
 }
