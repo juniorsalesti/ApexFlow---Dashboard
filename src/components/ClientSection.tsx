@@ -6,19 +6,21 @@ import { Modal } from './ui/Modal';
 import { formatCurrency } from '../lib/utils';
 import { addClient, updateClient, deleteClient } from '../services/db';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle, DollarSign, Calendar } from 'lucide-react';
 
 interface ClientSectionProps {
   clients: any[];
   projects: any[];
   contracts: any[];
+  financial: any[];
 }
 
-export function ClientSection({ clients, projects, contracts }: ClientSectionProps) {
+export function ClientSection({ clients, projects, contracts, financial }: ClientSectionProps) {
   const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -92,6 +94,11 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
   const openDeleteModal = (client: any) => {
     setSelectedClient(client);
     setIsDeleteModalOpen(true);
+  };
+
+  const openHistoryModal = (client: any) => {
+    setSelectedClient(client);
+    setIsHistoryModalOpen(true);
   };
 
   // Calculate real metrics
@@ -209,45 +216,57 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
                   <th className="px-4 py-3">Empresa</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Projetos</th>
-                  <th className="px-4 py-3">Faturamento</th>
+                  <th className="px-4 py-3">Faturamento Total</th>
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                 {clients.map((client) => {
-                  const clientProjects = projects.filter(p => p.clientId === client.id);
-                  const clientContracts = contracts.filter(c => c.clientId === client.id);
-                  const monthlyRevenue = clientContracts.reduce((acc, curr) => acc + (curr.monthlyValue || 0), 0);
-                  
-                  return (
-                    <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-400">
-                            {client.name.substring(0, 2)}
+                    const clientProjects = projects.filter(p => p.clientId === client.id);
+                    const clientFinancial = financial.filter(f => f.clientId === client.id && f.type === 'income');
+                    const totalBilled = clientFinancial.reduce((acc, curr) => acc + (curr.value || 0), 0);
+                    
+                    return (
+                      <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-400">
+                              {client.name.substring(0, 2)}
+                            </div>
+                            <span className="text-sm font-semibold text-slate-900 dark:text-white">{client.name}</span>
                           </div>
-                          <span className="text-sm font-semibold text-slate-900 dark:text-white">{client.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{client.company}</td>
-                      <td className="px-4 py-4">
-                        <Badge variant={client.status}>{client.status}</Badge>
-                      </td>
-                      <td className="px-4 py-4">
-                        {clientProjects.length > 0 ? (
-                          <div className="flex items-center gap-1.5">
-                            <Briefcase className="w-3 h-3 text-violet-500 dark:text-violet-400" />
-                            <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{clientProjects.length}</span>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{client.company}</td>
+                        <td className="px-4 py-4">
+                          <Badge variant={client.status}>{client.status}</Badge>
+                        </td>
+                        <td className="px-4 py-4">
+                          {clientProjects.length > 0 ? (
+                            <div className="flex items-center gap-1.5">
+                              <Briefcase className="w-3 h-3 text-violet-500 dark:text-violet-400" />
+                              <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{clientProjects.length}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-300 dark:text-slate-700">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(totalBilled)}</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">{clientFinancial.length} transações</span>
                           </div>
-                        ) : (
-                          <span className="text-xs text-slate-300 dark:text-slate-700">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-sm font-medium text-slate-900 dark:text-white">{formatCurrency(monthlyRevenue)}</td>
-                      <td className="px-4 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={() => openEditModal(client)}
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={() => openHistoryModal(client)}
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-violet-600 dark:hover:text-violet-400"
+                              title="Ver Histórico Financeiro"
+                            >
+                              <DollarSign className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => openEditModal(client)}
                             className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-violet-600 dark:hover:text-violet-400"
                             title="Editar"
                           >
@@ -440,6 +459,65 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
             {loading ? 'Salvando...' : 'Salvar Alterações'}
           </button>
         </form>
+      </Modal>
+
+      {/* History Modal */}
+      <Modal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        title={`Histórico Financeiro: ${selectedClient?.company}`}
+      >
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 rounded-xl">
+              <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Total Pago</p>
+              <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+                {formatCurrency(financial.filter(f => f.clientId === selectedClient?.id && f.type === 'income').reduce((acc, curr) => acc + curr.value, 0))}
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Transações</p>
+              <p className="text-xl font-bold text-slate-900 dark:text-white">
+                {financial.filter(f => f.clientId === selectedClient?.id).length}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            {financial.filter(f => f.clientId === selectedClient?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(entry => (
+              <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${entry.type === 'income' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                    <DollarSign className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{entry.description}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Calendar className="w-3 h-3 text-slate-400" />
+                      <span className="text-[10px] text-slate-500">{new Date(entry.date).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                  </div>
+                </div>
+                <p className={`text-sm font-bold ${entry.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {entry.type === 'income' ? '+' : '-'}{formatCurrency(entry.value)}
+                </p>
+              </div>
+            ))}
+            {financial.filter(f => f.clientId === selectedClient?.id).length === 0 && (
+              <div className="text-center py-12">
+                <DollarSign className="w-12 h-12 text-slate-200 dark:text-slate-800 mx-auto mb-4" />
+                <p className="text-sm text-slate-400 dark:text-slate-600 italic">Nenhuma transação vinculada a este cliente.</p>
+              </div>
+            )}
+          </div>
+
+          <button 
+            onClick={() => setIsHistoryModalOpen(false)}
+            className="w-full py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
       </Modal>
 
       {/* Delete Client Modal */}

@@ -25,12 +25,13 @@ import { addFinancialEntry, updateFinancialEntry, deleteFinancialEntry } from '.
 interface FinancialSectionProps {
   financial: any[];
   allFinancial: any[];
+  clients: any[];
   selectedMonth: number;
   selectedYear: number;
   period: string;
 }
 
-export function FinancialSection({ financial, allFinancial, selectedMonth, selectedYear, period }: FinancialSectionProps) {
+export function FinancialSection({ financial, allFinancial, clients, selectedMonth, selectedYear, period }: FinancialSectionProps) {
   const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -43,7 +44,8 @@ export function FinancialSection({ financial, allFinancial, selectedMonth, selec
     value: 0,
     date: new Date().toISOString().split('T')[0],
     description: '',
-    companyId: ''
+    companyId: '',
+    clientId: ''
   });
 
   const handleSaveEntry = async (e: React.FormEvent) => {
@@ -84,7 +86,8 @@ export function FinancialSection({ financial, allFinancial, selectedMonth, selec
       value: 0, 
       date: new Date().toISOString().split('T')[0], 
       description: '',
-      companyId: ''
+      companyId: '',
+      clientId: ''
     });
     setSelectedEntry(null);
   };
@@ -97,7 +100,8 @@ export function FinancialSection({ financial, allFinancial, selectedMonth, selec
       value: entry.value,
       date: entry.date.split('T')[0],
       description: entry.description || '',
-      companyId: entry.companyId
+      companyId: entry.companyId,
+      clientId: entry.clientId || ''
     });
     setIsModalOpen(true);
   };
@@ -285,6 +289,7 @@ export function FinancialSection({ financial, allFinancial, selectedMonth, selec
                 <tr className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase border-b border-slate-100 dark:border-slate-800">
                   <th className="px-4 py-3">Data</th>
                   <th className="px-4 py-3">Descrição</th>
+                  <th className="px-4 py-3">Cliente</th>
                   <th className="px-4 py-3">Categoria</th>
                   <th className="px-4 py-3">Tipo</th>
                   <th className="px-4 py-3">Valor</th>
@@ -299,6 +304,20 @@ export function FinancialSection({ financial, allFinancial, selectedMonth, selec
                     </td>
                     <td className="px-4 py-4">
                       <p className="text-sm font-semibold text-slate-900 dark:text-white">{entry.description || 'Sem descrição'}</p>
+                    </td>
+                    <td className="px-4 py-4">
+                      {entry.clientId ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-violet-100 dark:bg-violet-900/30 rounded flex items-center justify-center text-[10px] font-bold text-violet-600 dark:text-violet-400">
+                            {clients.find(c => c.id === entry.clientId)?.name?.substring(0, 2) || 'CL'}
+                          </div>
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                            {clients.find(c => c.id === entry.clientId)?.name || 'Cliente removido'}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400 dark:text-slate-600 italic">Geral</span>
+                      )}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-wrap gap-1">
@@ -436,6 +455,23 @@ export function FinancialSection({ financial, allFinancial, selectedMonth, selec
                 className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
                 required
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Cliente (Opcional)</label>
+            <div className="relative">
+              <Plus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <select 
+                value={formData.clientId}
+                onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+              >
+                <option value="">Nenhum cliente (Geral)</option>
+                {clients.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.company})</option>
+                ))}
+              </select>
             </div>
           </div>
 

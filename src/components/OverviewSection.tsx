@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { DollarSign, Users, TrendingUp, CreditCard, Briefcase, PieChart } from 'lucide-react';
 import { StatCard } from './ui/StatCard';
-import { formatPercent } from '../lib/utils';
+import { Card } from './ui/Card';
+import { formatPercent, formatCurrency } from '../lib/utils';
 
 interface OverviewSectionProps {
   clients: any[];
@@ -81,6 +82,23 @@ export function OverviewSection({
     const recurrentPercent = totalRevenue > 0 ? (mrr / totalRevenue) * 100 : 0;
     const projectPercent = totalRevenue > 0 ? (projectRevenue / totalRevenue) * 100 : 0;
 
+    // Ranking of clients by revenue in the period
+    const clientRevenueMap = financial.reduce((acc: any, curr) => {
+      if (curr.type === 'income' && curr.clientId) {
+        acc[curr.clientId] = (acc[curr.clientId] || 0) + curr.value;
+      }
+      return acc;
+    }, {});
+
+    const clientRanking = Object.entries(clientRevenueMap)
+      .map(([clientId, revenue]) => ({
+        clientId,
+        revenue: revenue as number,
+        client: clients.find(c => c.id === clientId)
+      }))
+      .filter(item => item.client)
+      .sort((a, b) => b.revenue - a.revenue);
+
     return {
       totalRevenue,
       mrr,
@@ -89,7 +107,8 @@ export function OverviewSection({
       averageTicket,
       projectRevenue,
       recurrentPercent,
-      projectPercent
+      projectPercent,
+      clientRanking
     };
   }, [clients, projects, contracts, financial, allFinancial, selectedMonth, selectedYear, period]);
 
@@ -138,13 +157,6 @@ export function OverviewSection({
           isCurrency 
           className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 transition-colors"
         />
-        <StatCard 
-          title="Receita Total (Acumulada)" 
-          value={financial.reduce((acc, curr) => acc + (curr.type === 'income' ? curr.value : 0), 0)} 
-          icon={DollarSign} 
-          isCurrency 
-          className="bg-violet-50 dark:bg-violet-900/10 border-violet-100 dark:border-violet-900/30 transition-colors"
-        />
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors">
           <div className="flex items-center gap-4">
             <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
@@ -180,6 +192,87 @@ export function OverviewSection({
              </svg>
           </div>
         </div>
+        <StatCard 
+          title="Receita Total (Acumulada)" 
+          value={financial.reduce((acc, curr) => acc + (curr.type === 'income' ? curr.value : 0), 0)} 
+          icon={DollarSign} 
+          isCurrency 
+          className="bg-violet-50 dark:bg-violet-900/10 border-violet-100 dark:border-violet-900/30 transition-colors"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card title="Ranking de Clientes" subtitle="Faturamento por cliente no período">
+          <div className="space-y-4">
+            {metrics.clientRanking.length > 0 ? (
+              metrics.clientRanking.slice(0, 5).map((item, index) => (
+                <div key={item.clientId} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-violet-100 dark:bg-violet-900/30 rounded-lg flex items-center justify-center text-xs font-bold text-violet-600 dark:text-violet-400">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{item.client.company}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">{item.client.name}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(item.revenue)}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">{formatPercent((item.revenue / metrics.totalRevenue) * 100)} do total</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 text-slate-200 dark:text-slate-800 mx-auto mb-4" />
+                <p className="text-sm text-slate-400 dark:text-slate-600 italic">Nenhuma transação vinculada a clientes no período.</p>
+              </div>
+            )}
+            {metrics.clientRanking.length > 5 && (
+              <p className="text-center text-[10px] text-slate-400 dark:text-slate-600 uppercase font-bold tracking-widest">Exibindo top 5 de {metrics.clientRanking.length} clientes</p>
+            )}
+          </div>
+        </Card>
+
+        <Card title="Insights de Receita" subtitle="Análise de concentração e lucratividade">
+          <div className="space-y-6">
+            <div className="p-4 bg-violet-50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-900/20 rounded-xl">
+              <h5 className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-3">Concentração de Receita</h5>
+              {metrics.clientRanking.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-600 dark:text-slate-400">Top Cliente ({metrics.clientRanking[0].client.company})</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatPercent((metrics.clientRanking[0].revenue / metrics.totalRevenue) * 100)}</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-violet-500" 
+                      style={{ width: `${(metrics.clientRanking[0].revenue / metrics.totalRevenue) * 100}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                    { (metrics.clientRanking[0].revenue / metrics.totalRevenue) > 0.4 
+                      ? "⚠️ Alta dependência: Um único cliente representa mais de 40% da sua receita." 
+                      : "✅ Boa distribuição: Sua receita não está excessivamente concentrada em um único cliente."}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">Vincule transações a clientes para ver a análise de concentração.</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ticket Médio / Cliente</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(metrics.averageTicket)}</p>
+              </div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Clientes Pagantes</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{metrics.clientRanking.length}</p>
+              </div>
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   );
