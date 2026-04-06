@@ -35,6 +35,7 @@ import {
   AlertCircle, 
   Trash2, 
   Edit2,
+  Copy,
   Building2,
   Briefcase,
   Target,
@@ -174,6 +175,21 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
     }
   };
 
+  const handleDuplicateTask = async (task: any) => {
+    setLoading(true);
+    try {
+      const { id, createdAt, ...taskData } = task;
+      await addTask({
+        ...taskData,
+        title: `${task.title} (Cópia)`
+      }, task.companyId);
+    } catch (error) {
+      console.error('Error duplicating task:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
@@ -271,6 +287,7 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
                 const newStatus = task.status === 'concluído' ? 'a fazer' : 'concluído';
                 await updateTask(task.id, { status: newStatus });
               }}
+              onDuplicate={handleDuplicateTask}
             />
           ))}
         </div>
@@ -467,7 +484,7 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
   );
 }
 
-function TaskColumn({ id, title, tasks, onEdit, onDelete, onStatusToggle, onQuickAdd }: any) {
+function TaskColumn({ id, title, tasks, onEdit, onDelete, onStatusToggle, onQuickAdd, onDuplicate }: any) {
   const { setNodeRef } = useSortable({ id });
   const dayAbbr = title.split('-')[0].substring(0, 3);
 
@@ -502,6 +519,7 @@ function TaskColumn({ id, title, tasks, onEdit, onDelete, onStatusToggle, onQuic
               onEdit={onEdit} 
               onDelete={onDelete}
               onStatusToggle={onStatusToggle}
+              onDuplicate={onDuplicate}
             />
           ))}
         </SortableContext>
@@ -518,7 +536,7 @@ function TaskColumn({ id, title, tasks, onEdit, onDelete, onStatusToggle, onQuic
   );
 }
 
-function TaskCard({ task, onEdit, onDelete, onStatusToggle, isOverlay }: any) {
+function TaskCard({ task, onEdit, onDelete, onStatusToggle, onDuplicate, isOverlay }: any) {
   const {
     attributes,
     listeners,
@@ -575,14 +593,23 @@ function TaskCard({ task, onEdit, onDelete, onStatusToggle, isOverlay }: any) {
         {!isOverlay && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button 
+              onClick={() => onDuplicate(task)}
+              className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 rounded-lg transition-colors"
+              title="Duplicar"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+            <button 
               onClick={() => onEdit(task)}
               className="p-1.5 text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/50 rounded-lg transition-colors"
+              title="Editar"
             >
               <Edit2 className="w-3.5 h-3.5" />
             </button>
             <button 
               onClick={() => onDelete(task.id)}
               className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/50 rounded-lg transition-colors"
+              title="Excluir"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

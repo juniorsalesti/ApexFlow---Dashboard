@@ -12,6 +12,7 @@ import {
   DragOverEvent,
   DragEndEvent,
   defaultDropAnimationSideEffects,
+  useDroppable,
 } from '@dnd-kit/core';
 import { 
   arrayMove, 
@@ -530,9 +531,13 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
 }
 
 function KanbanColumn({ column, leads }: { column: any, leads: any[], key?: any }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+  });
+
   return (
     <div className="flex-shrink-0 w-[280px] md:w-80 flex flex-col gap-4 snap-center">
-      <div className={`flex items-center justify-between px-4 py-2 rounded-lg border transition-colors ${column.color} dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300`}>
+      <div className={`flex items-center justify-between px-4 py-2 rounded-lg border transition-colors ${column.color} dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 ${isOver ? 'ring-2 ring-violet-500 ring-inset' : ''}`}>
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold uppercase tracking-wider">{column.title}</span>
         </div>
@@ -540,7 +545,10 @@ function KanbanColumn({ column, leads }: { column: any, leads: any[], key?: any 
       </div>
 
       <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex-1 space-y-3 p-1 bg-slate-50/50 dark:bg-slate-900/20 rounded-xl min-h-[500px] transition-colors">
+        <div 
+          ref={setNodeRef}
+          className={`flex-1 space-y-3 p-1 rounded-xl min-h-[500px] transition-colors ${isOver ? 'bg-violet-50/50 dark:bg-violet-900/10' : 'bg-slate-50/50 dark:bg-slate-900/20'}`}
+        >
           {leads.map(lead => (
             <LeadCard key={lead.id} lead={lead} />
           ))}
