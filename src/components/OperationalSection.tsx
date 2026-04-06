@@ -74,9 +74,9 @@ export function OperationalSection({ projects }: OperationalSectionProps) {
       </div>
 
       <Card title="Status dos Projetos" className="lg:col-span-2">
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {projects.slice(0, 5).map((project, i) => (
-            <div key={i} className="flex items-center gap-6 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-violet-200 dark:hover:border-violet-700 transition-colors group">
+            <div key={i} className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-violet-200 dark:hover:border-violet-700 transition-colors group">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <h5 className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{project.name}</h5>
@@ -102,7 +102,7 @@ export function OperationalSection({ projects }: OperationalSectionProps) {
                   <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{project.status === 'delivered' ? 100 : project.status === 'execution' ? 65 : 10}%</span>
                 </div>
               </div>
-              <div className="text-right min-w-[100px]">
+              <div className="flex md:block items-center justify-between md:text-right min-w-[100px] pt-3 md:pt-0 border-t md:border-t-0 border-slate-50 dark:border-slate-800">
                 <p className="text-xs font-bold text-slate-900 dark:text-white transition-colors">{project.type}</p>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 transition-colors">Atualizado agora</p>
               </div>

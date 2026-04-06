@@ -280,7 +280,7 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-6 overflow-x-auto pb-4 min-h-[600px]">
+        <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 min-h-[600px] snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
           {COLUMNS.map(column => (
             <KanbanColumn 
               key={column.id} 
@@ -531,7 +531,7 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
 
 function KanbanColumn({ column, leads }: { column: any, leads: any[], key?: any }) {
   return (
-    <div className="flex-shrink-0 w-80 flex flex-col gap-4">
+    <div className="flex-shrink-0 w-[280px] md:w-80 flex flex-col gap-4 snap-center">
       <div className={`flex items-center justify-between px-4 py-2 rounded-lg border transition-colors ${column.color} dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300`}>
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold uppercase tracking-wider">{column.title}</span>

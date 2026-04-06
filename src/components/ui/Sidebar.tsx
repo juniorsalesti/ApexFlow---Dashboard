@@ -27,22 +27,44 @@ const menuItems = [
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (id: string) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
+export function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: SidebarProps) {
   return (
-    <aside className="w-64 bg-slate-950 dark:bg-slate-950 text-slate-300 flex flex-col h-screen sticky top-0 border-r border-slate-800 transition-colors duration-300">
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center overflow-hidden">
-          <img 
-            src="https://i.ibb.co/Y788pF9M/Apex-Flow.png" 
-            alt="ApexFlow Logo" 
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
+    <>
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 w-64 bg-slate-950 dark:bg-slate-950 text-slate-300 flex flex-col h-screen border-r border-slate-800 transition-transform duration-300 lg:translate-x-0 lg:static lg:block",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="p-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center overflow-hidden">
+              <img 
+                src="https://i.ibb.co/Y788pF9M/Apex-Flow.png" 
+                alt="ApexFlow Logo" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <h1 className="text-xl font-bold text-white tracking-tight">ApexFlow</h1>
+          </div>
+          <button 
+            onClick={onClose}
+            className="lg:hidden p-2 text-slate-400 hover:text-white transition-colors"
+          >
+            <ChevronRight className="w-5 h-5 rotate-180" />
+          </button>
         </div>
-        <h1 className="text-xl font-bold text-white tracking-tight">ApexFlow</h1>
-      </div>
 
       <nav className="flex-1 px-4 py-4 space-y-1">
         {menuItems.map((item) => (
@@ -76,5 +98,6 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         </button>
       </div>
     </aside>
+    </>
   );
 }

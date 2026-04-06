@@ -128,6 +128,7 @@ function DashboardContent() {
   const { selectedCompanyId } = useCompany();
   const [activeTab, setActiveTab] = useState('overview');
   const [period, setPeriod] = useState('Últimos 30 dias');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Real data state
   const [clients, setClients] = useState<any[]>([]);
@@ -190,35 +191,43 @@ function DashboardContent() {
 
   return (
     <ErrorBoundary>
-      <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300 overflow-x-hidden">
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            setIsSidebarOpen(false);
+          }} 
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+        />
         
         <div className="flex-1 flex flex-col min-w-0">
-          <Header />
+          <Header onMenuClick={() => setIsSidebarOpen(true)} />
           
-          <main className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+          <main className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full">
             {/* Page Header & Filters */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{getTitle()}</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Bem-vindo de volta, aqui está o resumo da ApexFlow hoje.</p>
+                <h2 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{getTitle()}</h2>
+                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">Bem-vindo de volta, aqui está o resumo da ApexFlow hoje.</p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 md:gap-3">
                 <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <Calendar className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{period}</span>
+                  <Calendar className="w-3 h-3 md:w-4 md:h-4 text-slate-400" />
+                  <span className="text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300">{period}</span>
                   <ChevronDown className="w-3 h-3 text-slate-400" />
                 </div>
                 
                 <button className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <Filter className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Filtros</span>
+                  <Filter className="w-3 h-3 md:w-4 md:h-4 text-slate-400" />
+                  <span className="text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300">Filtros</span>
                 </button>
 
-                <button className="flex items-center gap-2 bg-slate-900 dark:bg-violet-600 text-white rounded-lg px-4 py-2 shadow-sm hover:bg-slate-800 dark:hover:bg-violet-700 transition-colors">
-                  <Download className="w-4 h-4" />
-                  <span className="text-xs font-medium">Exportar</span>
+                <button className="flex items-center gap-2 bg-slate-900 dark:bg-violet-600 text-white rounded-lg px-4 py-2 shadow-sm hover:bg-slate-800 dark:hover:bg-violet-700 transition-colors ml-auto lg:ml-0">
+                  <Download className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="text-[10px] md:text-xs font-medium">Exportar</span>
                 </button>
               </div>
             </div>

@@ -221,7 +221,7 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
-        <div className="flex gap-6 overflow-x-auto pb-6 -mx-8 px-8 scrollbar-hide">
+        <div className="flex gap-4 md:gap-6 overflow-x-auto pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scrollbar-hide">
           {DAYS.map(day => (
             <TaskColumn 
               key={day} 
@@ -426,12 +426,14 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
 
 function TaskColumn({ id, title, tasks, onEdit, onDelete, onStatusToggle, onQuickAdd }: any) {
   const { setNodeRef } = useSortable({ id });
+  const dayAbbr = title.split('-')[0].substring(0, 3);
 
   return (
-    <div className="flex-shrink-0 w-80">
+    <div className="flex-shrink-0 w-[280px] md:w-80 snap-center">
       <div className="flex items-center justify-between mb-4 px-2">
         <div className="flex items-center gap-2">
-          <h4 className="font-bold text-slate-900 dark:text-white">{title}</h4>
+          <h4 className="font-bold text-slate-900 dark:text-white hidden md:block">{title}</h4>
+          <h4 className="font-bold text-slate-900 dark:text-white md:hidden">{dayAbbr}</h4>
           <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
             {tasks.length}
           </span>

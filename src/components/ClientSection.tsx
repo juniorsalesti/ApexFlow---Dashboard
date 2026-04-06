@@ -45,11 +45,19 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
     }
   };
 
-  // Mock historical data for the chart (since we don't have historical snapshots in Firestore yet)
+  // Calculate real metrics
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const newClientsCount = clients.filter(c => new Date(c.joinedAt) > thirtyDaysAgo).length;
+  const churnCount = clients.filter(c => c.status === 'inactive').length;
+  const churnRate = clients.length > 0 ? (churnCount / clients.length) * 100 : 0;
+
+  // Historical data for the chart
   const chartData = [
-    { month: 'Jan', clients: 24 },
-    { month: 'Fev', clients: 28 },
-    { month: 'Mar', clients: 32 },
+    { month: 'Jan', clients: 0 },
+    { month: 'Fev', clients: 0 },
+    { month: 'Mar', clients: 0 },
     { month: 'Abr', clients: clients.length },
   ];
 
@@ -108,7 +116,7 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
                 <UserPlus className="w-4 h-4" />
                 <span className="text-xs font-bold uppercase">Novos</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">4</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{newClientsCount}</p>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Últimos 30 dias</p>
             </div>
             <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
@@ -116,8 +124,8 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
                 <UserMinus className="w-4 h-4" />
                 <span className="text-xs font-bold uppercase">Churn</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">0</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Taxa de 0%</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{churnCount}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Taxa de {churnRate.toFixed(0)}%</p>
             </div>
           </div>
 

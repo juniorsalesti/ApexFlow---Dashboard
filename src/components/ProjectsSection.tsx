@@ -251,9 +251,9 @@ export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
 
       {/* Pipeline Visual */}
       <Card title="Pipeline de Projetos" subtitle="Fluxo de execução e negociação">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+        <div className="flex gap-4 md:grid md:grid-cols-4 overflow-x-auto pb-4 md:pb-0 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
           {pipelineStages.map((stage) => (
-            <div key={stage.id} className="flex flex-col gap-4">
+            <div key={stage.id} className="flex-shrink-0 w-[280px] md:w-auto flex flex-col gap-4 snap-center">
               <div className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800 transition-colors">
                 <div className="flex items-center gap-2">
                   <stage.icon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
