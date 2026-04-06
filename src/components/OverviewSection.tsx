@@ -8,43 +8,75 @@ interface OverviewSectionProps {
   projects: any[];
   contracts: any[];
   financial: any[];
+  allFinancial: any[];
+  selectedMonth: number;
+  selectedYear: number;
+  period: string;
 }
 
-export function OverviewSection({ clients, projects, contracts, financial }: OverviewSectionProps) {
+export function OverviewSection({ 
+  clients, 
+  projects, 
+  contracts, 
+  financial, 
+  allFinancial,
+  selectedMonth,
+  selectedYear,
+  period
+}: OverviewSectionProps) {
   const metrics = useMemo(() => {
     const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    let targetMonth = selectedMonth;
+    let targetYear = selectedYear;
 
-    const currentMonthEntries = financial.filter(f => {
-      const d = new Date(f.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    });
+    if (period !== 'Personalizado') {
+      targetMonth = now.getMonth();
+      targetYear = now.getFullYear();
+    }
 
-    const lastMonthEntries = financial.filter(f => {
+    const lastMonth = targetMonth === 0 ? 11 : targetMonth - 1;
+    const lastMonthYear = targetMonth === 0 ? targetYear - 1 : targetYear;
+
+    // Current period revenue (from filtered financial)
+    const currentRevenue = financial.reduce((acc, curr) => acc + (curr.type === 'income' ? curr.value : 0), 0);
+
+    // Last month revenue for growth calculation
+    const lastMonthEntries = allFinancial.filter(f => {
       const d = new Date(f.date);
       return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
     });
-
-    const currentRevenue = currentMonthEntries.reduce((acc, curr) => acc + (curr.type === 'income' ? curr.value : 0), 0);
     const lastRevenue = lastMonthEntries.reduce((acc, curr) => acc + (curr.type === 'income' ? curr.value : 0), 0);
 
-    const growth = lastRevenue > 0 ? ((currentRevenue - lastRevenue) / lastRevenue) * 100 : 0;
+    const growth = lastRevenue > 0 
+      ? ((currentRevenue - lastRevenue) / lastRevenue) * 100 
+      : (currentRevenue > 0 && lastRevenue === 0 ? 100 : 0);
 
-    const activeClients = clients.filter(c => c.status === 'active').length;
+    const activeClientsCount = clients.filter(c => c.status === 'active').length;
     
+    // MRR: Sum of monthlyValue of all active contracts
     const mrr = contracts
       .filter(c => c.status === 'active')
-      .reduce((acc, curr) => acc + (curr.monthlyValue || 0), 0);
+      .reduce((acc, curr) => acc + (Number(curr.monthlyValue) || 0), 0);
 
-    const projectRevenue = projects
-      .filter(p => p.status === 'delivered')
-      .reduce((acc, curr) => acc + (curr.value || 0), 0);
+    const projectRevenue = financial.reduce((acc, curr) => {
+      if (curr.type === 'income') {
+        const categories = curr.categories || (curr.category ? [curr.category] : []);
+        const projectCategories = categories.filter((cat: string) => 
+          ['Sites', 'Landing Page', 'Branding', 'Automação'].includes(cat)
+        );
+        
+        if (projectCategories.length > 0) {
+          const portion = projectCategories.length / categories.length;
+          return acc + (curr.value * portion);
+        }
+      }
+      return acc;
+    }, 0);
 
-    const totalRevenue = currentRevenue; // Using current month revenue for the main stat
-    const averageTicket = activeClients > 0 ? mrr / activeClients : 0;
+    const totalRevenue = currentRevenue;
+    
+    // Ticket Médio = Faturamento Total / Clientes Ativos
+    const averageTicket = activeClientsCount > 0 ? totalRevenue / activeClientsCount : 0;
     
     const recurrentPercent = totalRevenue > 0 ? (mrr / totalRevenue) * 100 : 0;
     const projectPercent = totalRevenue > 0 ? (projectRevenue / totalRevenue) * 100 : 0;
@@ -52,14 +84,14 @@ export function OverviewSection({ clients, projects, contracts, financial }: Ove
     return {
       totalRevenue,
       mrr,
-      activeClients,
+      activeClients: activeClientsCount,
       growth,
       averageTicket,
       projectRevenue,
       recurrentPercent,
       projectPercent
     };
-  }, [clients, projects, contracts, financial]);
+  }, [clients, projects, contracts, financial, allFinancial, selectedMonth, selectedYear, period]);
 
   return (
     <div className="space-y-6">

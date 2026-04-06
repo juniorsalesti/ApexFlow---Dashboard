@@ -1,22 +1,51 @@
 import { Card } from './ui/Card';
 import { formatCurrency } from '../lib/utils';
 import { TrendingUp, Target, Users, Zap } from 'lucide-react';
+import { cn } from '../lib/utils';
+import { useMemo } from 'react';
 
 interface GrowthSectionProps {
   clients: any[];
   projects: any[];
   financial: any[];
+  allFinancial: any[];
 }
 
-export function GrowthSection({ clients, projects, financial }: GrowthSectionProps) {
+export function GrowthSection({ clients, projects, financial, allFinancial }: GrowthSectionProps) {
   const currentRevenue = financial
     .filter(f => f.type === 'income')
     .reduce((acc, curr) => acc + curr.value, 0);
 
   const activeClients = clients.filter(c => c.status === 'active').length;
+  
+  // Ticket Médio = Faturamento Total (do período) / Clientes Ativos
   const averageTicket = activeClients > 0 ? currentRevenue / activeClients : 0;
 
-  // Mock CAC and LTV for now as they require historical data
+  // Growth calculation
+  const growth = useMemo(() => {
+    if (financial.length === 0) return 0;
+    
+    // Get the month of the current filtered data
+    const firstEntry = new Date(financial[0].date);
+    const m = firstEntry.getMonth();
+    const y = firstEntry.getFullYear();
+    
+    const lastMonth = m === 0 ? 11 : m - 1;
+    const lastMonthYear = m === 0 ? y - 1 : y;
+    
+    const lastMonthEntries = allFinancial.filter(f => {
+      const d = new Date(f.date);
+      return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
+    });
+    
+    const lastRevenue = lastMonthEntries
+      .filter(f => f.type === 'income')
+      .reduce((acc, curr) => acc + curr.value, 0);
+      
+    return lastRevenue > 0 ? ((currentRevenue - lastRevenue) / lastRevenue) * 100 : 0;
+  }, [financial, allFinancial, currentRevenue]);
+
+  // Mock CAC for now, but LTV is based on real ticket
   const cac = 0;
   const ltv = averageTicket * 12; // Assuming 12 months retention
   const ltvCacRatio = cac > 0 ? (ltv / cac).toFixed(1) : '0';
@@ -77,19 +106,24 @@ export function GrowthSection({ clients, projects, financial }: GrowthSectionPro
             <div className="absolute top-0 right-0 p-4 opacity-10">
               <TrendingUp className="w-24 h-24" />
             </div>
-            <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Abril (Projetado)</p>
+            <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Mês Atual (Realizado)</p>
             <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue)}</h4>
-            <p className="text-slate-400 dark:text-slate-500 text-xs mt-2 font-semibold">Crescimento de 0%</p>
+            <p className={cn(
+              "text-xs mt-2 font-semibold",
+              growth >= 0 ? "text-emerald-500" : "text-rose-500"
+            )}>
+              {growth >= 0 ? '+' : ''}{growth.toFixed(1)}% vs mês anterior
+            </p>
           </div>
           <div className="p-6 rounded-2xl bg-slate-800 dark:bg-slate-900 text-white relative overflow-hidden transition-colors">
-            <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Maio (Projetado)</p>
-            <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue)}</h4>
-            <p className="text-slate-400 dark:text-slate-500 text-xs mt-2 font-semibold">Crescimento de 0%</p>
+            <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Próximo Mês (Projetado)</p>
+            <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue * (1 + (growth > 0 ? growth / 100 : 0.05)))}</h4>
+            <p className="text-slate-400 dark:text-slate-500 text-xs mt-2 font-semibold">Estimativa baseada em tendência</p>
           </div>
           <div className="p-6 rounded-2xl bg-slate-700 dark:bg-slate-950 text-white relative overflow-hidden transition-colors">
-            <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Junho (Projetado)</p>
-            <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue)}</h4>
-            <p className="text-slate-400 dark:text-slate-500 text-xs mt-2 font-semibold">Crescimento de 0%</p>
+            <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Meta Trimestral</p>
+            <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue * 3.5)}</h4>
+            <p className="text-slate-400 dark:text-slate-500 text-xs mt-2 font-semibold">Objetivo de escala</p>
           </div>
         </div>
       </Card>

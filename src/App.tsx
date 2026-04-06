@@ -128,7 +128,9 @@ export default function App() {
 function DashboardContent() {
   const { selectedCompanyId } = useCompany();
   const [activeTab, setActiveTab] = useState('overview');
-  const [period, setPeriod] = useState('Últimos 30 dias');
+  const [period, setPeriod] = useState('Este Mês');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Real data state
@@ -162,17 +164,17 @@ function DashboardContent() {
 
   const renderSection = () => {
     switch (activeTab) {
-      case 'overview': return <OverviewSection clients={clients} projects={projects} contracts={contracts} financial={filteredFinancial} />;
-      case 'financial': return <FinancialSection financial={filteredFinancial} />;
+      case 'overview': return <OverviewSection clients={clients} projects={filteredProjects} contracts={filteredContracts} financial={filteredFinancial} allFinancial={financial} selectedMonth={selectedMonth} selectedYear={selectedYear} period={period} />;
+      case 'financial': return <FinancialSection financial={filteredFinancial} allFinancial={financial} />;
       case 'clients': return <ClientSection clients={clients} projects={projects} contracts={contracts} />;
-      case 'growth': return <GrowthSection clients={clients} projects={projects} financial={filteredFinancial} />;
-      case 'operational': return <OperationalSection projects={projects} />;
+      case 'growth': return <GrowthSection clients={clients} projects={projects} financial={filteredFinancial} allFinancial={financial} />;
+      case 'operational': return <OperationalSection projects={filteredProjects} />;
       case 'commercial': return <CommercialSection commercial={commercial} />;
-      case 'crm': return <CRMSection leads={leads} clients={clients} projects={projects} contracts={contracts} />;
-      case 'projects': return <ProjectsSection projects={projects} financial={filteredFinancial} />;
+      case 'crm': return <CRMSection leads={filteredLeads} clients={clients} projects={projects} contracts={contracts} />;
+      case 'projects': return <ProjectsSection projects={filteredProjects} financial={filteredFinancial} allFinancial={financial} />;
       case 'tasks': return <TasksSection tasks={tasks} clients={clients} projects={projects} leads={leads} />;
       case 'settings': return <SettingsSection />;
-      default: return <OverviewSection clients={clients} projects={projects} contracts={contracts} financial={filteredFinancial} />;
+      default: return <OverviewSection clients={clients} projects={filteredProjects} contracts={filteredContracts} financial={filteredFinancial} allFinancial={financial} selectedMonth={selectedMonth} selectedYear={selectedYear} period={period} />;
     }
   };
 
@@ -193,14 +195,53 @@ function DashboardContent() {
   };
 
   const filteredFinancial = useMemo(() => {
+    if (period === 'Personalizado') {
+      return financial.filter(f => {
+        const d = new Date(f.date);
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      });
+    }
+
     const now = new Date();
     let days = 30;
     if (period === 'Últimos 7 dias') days = 7;
     if (period === 'Últimos 90 dias') days = 90;
+    if (period === 'Este Mês') {
+      return financial.filter(f => {
+        const d = new Date(f.date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+    }
     
     const cutoff = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
     return financial.filter(f => new Date(f.date) >= cutoff);
-  }, [financial, period]);
+  }, [financial, period, selectedMonth, selectedYear]);
+
+  const filteredContracts = useMemo(() => {
+    // For MRR, we usually want active contracts in the selected period
+    // If filtering by month, we show contracts that were active during that month
+    return contracts.filter(c => c.status === 'active');
+  }, [contracts]);
+
+  const filteredProjects = useMemo(() => {
+    if (period === 'Personalizado') {
+      return projects.filter(p => {
+        const d = new Date(p.startDate || p.createdAt);
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      });
+    }
+    return projects;
+  }, [projects, period, selectedMonth, selectedYear]);
+
+  const filteredLeads = useMemo(() => {
+    if (period === 'Personalizado') {
+      return leads.filter(l => {
+        const d = new Date(l.createdAt);
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      });
+    }
+    return leads;
+  }, [leads, period, selectedMonth, selectedYear]);
 
   const handleExport = () => {
     const headers = ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor'];
@@ -253,6 +294,29 @@ function DashboardContent() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                {period === 'Personalizado' && (
+                  <div className="flex items-center gap-2">
+                    <select 
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-violet-500"
+                    >
+                      {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((m, i) => (
+                        <option key={m} value={i}>{m}</option>
+                      ))}
+                    </select>
+                    <select 
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-violet-500"
+                    >
+                      {[2024, 2025, 2026].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="relative group">
                   <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                     <Calendar className="w-3 h-3 md:w-4 md:h-4 text-slate-400" />
@@ -260,7 +324,7 @@ function DashboardContent() {
                     <ChevronDown className="w-3 h-3 text-slate-400" />
                   </div>
                   <div className="absolute top-full right-0 mt-1 w-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                    {['Últimos 7 dias', 'Últimos 30 dias', 'Últimos 90 dias'].map(p => (
+                    {['Este Mês', 'Últimos 7 dias', 'Últimos 30 dias', 'Últimos 90 dias', 'Personalizado'].map(p => (
                       <button 
                         key={p}
                         onClick={() => setPeriod(p)}

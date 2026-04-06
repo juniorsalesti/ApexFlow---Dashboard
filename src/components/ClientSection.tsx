@@ -4,9 +4,9 @@ import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Modal } from './ui/Modal';
 import { formatCurrency } from '../lib/utils';
-import { addClient } from '../services/db';
+import { addClient, updateClient, deleteClient } from '../services/db';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2 } from 'lucide-react';
+import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 
 interface ClientSectionProps {
   clients: any[];
@@ -17,6 +17,9 @@ interface ClientSectionProps {
 export function ClientSection({ clients, projects, contracts }: ClientSectionProps) {
   const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -30,7 +33,6 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
     e.preventDefault();
     const companyId = selectedCompanyId || formData.companyId;
     if (!companyId) {
-      alert('Por favor, selecione uma empresa para vincular este cliente.');
       return;
     }
     setLoading(true);
@@ -43,6 +45,53 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+    setLoading(true);
+    try {
+      await updateClient(selectedClient.id, formData);
+      setIsEditModalOpen(false);
+      setSelectedClient(null);
+      setFormData({ name: '', company: '', status: 'active', type: 'recurrent', companyId: '' });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteClient = async () => {
+    if (!selectedClient) return;
+    setLoading(true);
+    try {
+      await deleteClient(selectedClient.id);
+      setIsDeleteModalOpen(false);
+      setSelectedClient(null);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditModal = (client: any) => {
+    setSelectedClient(client);
+    setFormData({
+      name: client.name,
+      company: client.company,
+      status: client.status,
+      type: client.type || 'recurrent',
+      companyId: client.companyId
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const openDeleteModal = (client: any) => {
+    setSelectedClient(client);
+    setIsDeleteModalOpen(true);
   };
 
   // Calculate real metrics
@@ -196,9 +245,22 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
                       </td>
                       <td className="px-4 py-4 text-sm font-medium text-slate-900 dark:text-white">{formatCurrency(monthlyRevenue)}</td>
                       <td className="px-4 py-4 text-right">
-                        <button className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors">
-                          <MoreHorizontal className="w-4 h-4 text-slate-400 dark:text-slate-600" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => openEditModal(client)}
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-violet-600 dark:hover:text-violet-400"
+                            title="Editar"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => openDeleteModal(client)}
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -305,6 +367,115 @@ export function ClientSection({ clients, projects, contracts }: ClientSectionPro
             {loading ? 'Salvando...' : 'Cadastrar Cliente'}
           </button>
         </form>
+      </Modal>
+
+      {/* Edit Client Modal */}
+      <Modal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        title="Editar Cliente"
+      >
+        <form onSubmit={handleEditClient} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Nome do Contato</label>
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <input 
+                type="text" 
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Empresa</label>
+            <div className="relative">
+              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <input 
+                type="text" 
+                value={formData.company}
+                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Tipo de Cliente</label>
+              <select 
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+              >
+                <option value="recurrent">Recorrente</option>
+                <option value="project">Projeto</option>
+                <option value="both">Ambos</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Status</label>
+              <select 
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+              >
+                <option value="active">Ativo</option>
+                <option value="attention">Atenção</option>
+                <option value="risk">Risco</option>
+                <option value="inactive">Inativo</option>
+              </select>
+            </div>
+          </div>
+
+          <button 
+            type="submit"
+            disabled={loading}
+            className="w-full bg-violet-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-50"
+          >
+            {loading ? 'Salvando...' : 'Salvar Alterações'}
+          </button>
+        </form>
+      </Modal>
+
+      {/* Delete Client Modal */}
+      <Modal 
+        isOpen={isDeleteModalOpen} 
+        onClose={() => setIsDeleteModalOpen(false)} 
+        title="Excluir Cliente"
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/30 rounded-xl flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-rose-800 dark:text-rose-300">Atenção!</p>
+              <p className="text-xs text-rose-700 dark:text-rose-400 leading-relaxed">
+                Você está prestes a excluir o cliente <strong>{selectedClient?.name}</strong>. 
+                Esta ação é irreversível e removerá todos os dados associados.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button 
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button 
+              onClick={handleDeleteClient}
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200 dark:shadow-none disabled:opacity-50"
+            >
+              {loading ? 'Excluindo...' : 'Confirmar Exclusão'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

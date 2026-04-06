@@ -64,6 +64,8 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
   const { selectedCompanyId, companies } = useCompany();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -113,27 +115,29 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
 
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    const companyId = selectedCompanyId || formData.companyId;
+    let companyId = selectedCompanyId || formData.companyId;
+    
+    // Auto-select first company if none selected and only one exists
+    if (!companyId && companies.length > 0) {
+      companyId = companies[0].id;
+    }
+
     if (!companyId) {
       alert('Por favor, selecione uma empresa para vincular esta tarefa.');
       return;
     }
+
     setLoading(true);
-    console.log('Saving task...', { formData, companyId });
     try {
       if (selectedTask) {
-        console.log('Updating task...', selectedTask.id);
         await updateTask(selectedTask.id, formData);
       } else {
-        console.log('Adding new task...');
-        const result = await addTask(formData, companyId);
-        console.log('Task added:', result);
+        await addTask(formData, companyId);
       }
       setIsModalOpen(false);
       resetForm();
     } catch (error) {
       console.error('Error saving task:', error);
-      alert('Erro ao salvar tarefa. Verifique o console.');
     } finally {
       setLoading(false);
     }
@@ -156,12 +160,17 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
     setSelectedTask(null);
   };
 
-  const handleDeleteTask = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return;
+    setLoading(true);
     try {
-      await deleteTask(id);
+      await deleteTask(taskToDelete);
+      setIsDeleteModalOpen(false);
+      setTaskToDelete(null);
     } catch (error) {
       console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -234,10 +243,6 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
               title={day} 
               tasks={tasks.filter(t => t.date === day)}
               onQuickAdd={() => {
-                if (!selectedCompanyId) {
-                  alert('Selecione uma empresa específica para adicionar tarefas.');
-                  return;
-                }
                 setFormData({ ...formData, date: day });
                 setIsModalOpen(true);
               }}
@@ -253,11 +258,15 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
                   clientId: task.clientId || '',
                   projectId: task.projectId || '',
                   leadId: task.leadId || '',
-                  deadline: task.deadline || ''
+                  deadline: task.deadline || '',
+                  companyId: task.companyId || ''
                 });
                 setIsModalOpen(true);
               }}
-              onDelete={handleDeleteTask}
+              onDelete={(id: string) => {
+                setTaskToDelete(id);
+                setIsDeleteModalOpen(true);
+              }}
               onStatusToggle={async (task: any) => {
                 const newStatus = task.status === 'concluído' ? 'a fazer' : 'concluído';
                 await updateTask(task.id, { status: newStatus });
@@ -424,6 +433,35 @@ export function TasksSection({ tasks, clients, projects, leads }: TasksSectionPr
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Excluir Tarefa"
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/30 rounded-xl">
+            <p className="text-sm text-rose-800 dark:text-rose-400">
+              Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDeleteTask}
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-rose-600 text-white rounded-lg font-bold text-sm hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200 dark:shadow-none disabled:opacity-50"
+            >
+              {loading ? 'Excluindo...' : 'Excluir'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -24,16 +24,19 @@ import { addFinancialEntry, updateFinancialEntry, deleteFinancialEntry } from '.
 
 interface FinancialSectionProps {
   financial: any[];
+  allFinancial: any[];
 }
 
-export function FinancialSection({ financial }: FinancialSectionProps) {
+export function FinancialSection({ financial, allFinancial }: FinancialSectionProps) {
   const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     type: 'income',
-    category: 'Tráfego Pago',
+    categories: ['Tráfego Pago'] as string[],
     value: 0,
     date: new Date().toISOString().split('T')[0],
     description: '',
@@ -44,21 +47,23 @@ export function FinancialSection({ financial }: FinancialSectionProps) {
     e.preventDefault();
     const companyId = selectedCompanyId || formData.companyId;
     if (!companyId) {
-      alert('Por favor, selecione uma empresa para vincular esta transação.');
+      return;
+    }
+    if (formData.categories.length === 0) {
       return;
     }
     setLoading(true);
     try {
+      const data = {
+        ...formData,
+        value: Number(formData.value),
+        category: formData.categories[0], // Keep for backward compatibility
+      };
+
       if (selectedEntry) {
-        await updateFinancialEntry(selectedEntry.id, {
-          ...formData,
-          value: Number(formData.value)
-        });
+        await updateFinancialEntry(selectedEntry.id, data);
       } else {
-        await addFinancialEntry({
-          ...formData,
-          value: Number(formData.value)
-        }, companyId);
+        await addFinancialEntry(data, companyId);
       }
       setIsModalOpen(false);
       resetForm();
@@ -72,7 +77,7 @@ export function FinancialSection({ financial }: FinancialSectionProps) {
   const resetForm = () => {
     setFormData({ 
       type: 'income', 
-      category: 'Tráfego Pago', 
+      categories: ['Tráfego Pago'], 
       value: 0, 
       date: new Date().toISOString().split('T')[0], 
       description: '',
@@ -85,7 +90,7 @@ export function FinancialSection({ financial }: FinancialSectionProps) {
     setSelectedEntry(entry);
     setFormData({
       type: entry.type,
-      category: entry.category,
+      categories: entry.categories || (entry.category ? [entry.category] : []),
       value: entry.value,
       date: entry.date.split('T')[0],
       description: entry.description || '',
@@ -94,10 +99,21 @@ export function FinancialSection({ financial }: FinancialSectionProps) {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta transação?')) return;
+  const toggleCategory = (cat: string) => {
+    setFormData(prev => {
+      const categories = prev.categories.includes(cat)
+        ? prev.categories.filter(c => c !== cat)
+        : [...prev.categories, cat];
+      return { ...prev, categories };
+    });
+  };
+
+  const handleDelete = async () => {
+    if (!entryToDelete) return;
     try {
-      await deleteFinancialEntry(id);
+      await deleteFinancialEntry(entryToDelete);
+      setIsDeleteModalOpen(false);
+      setEntryToDelete(null);
     } catch (error) {
       console.error(error);
     }
@@ -106,27 +122,42 @@ export function FinancialSection({ financial }: FinancialSectionProps) {
   // Process data for charts
   const monthlyData = useMemo(() => {
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const currentYear = new Date().getFullYear();
+    const now = new Date();
+    const currentYear = now.getFullYear();
     
-    const data = months.map((month, index) => {
-      const monthEntries = financial.filter(f => {
-        const d = new Date(f.date);
-        return d.getMonth() === index && d.getFullYear() === currentYear;
+    // Show last 12 months trend
+    const data = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      
+      const monthEntries = allFinancial.filter(f => {
+        const entryDate = new Date(f.date);
+        return entryDate.getMonth() === m && entryDate.getFullYear() === y;
       });
 
       const revenue = monthEntries.reduce((acc, curr) => acc + (curr.type === 'income' ? curr.value : 0), 0);
       const expenses = monthEntries.reduce((acc, curr) => acc + (curr.type === 'expense' ? curr.value : 0), 0);
       
-      return { month, revenue, expenses, mrr: 0 }; // MRR could be added if needed
-    });
+      data.push({ 
+        month: months[m], 
+        revenue, 
+        expenses 
+      });
+    }
 
-    return data.slice(0, new Date().getMonth() + 1);
-  }, [financial]);
+    return data;
+  }, [allFinancial]);
 
   const categoryData = useMemo(() => {
     const counts = financial.reduce((acc: any, curr) => {
       if (curr.type === 'income') {
-        acc[curr.category] = (acc[curr.category] || 0) + curr.value;
+        const categories = curr.categories || (curr.category ? [curr.category] : ['Outros']);
+        const splitValue = curr.value / categories.length;
+        categories.forEach((cat: string) => {
+          acc[cat] = (acc[cat] || 0) + splitValue;
+        });
       }
       return acc;
     }, {});
@@ -249,7 +280,13 @@ export function FinancialSection({ financial }: FinancialSectionProps) {
                       <p className="text-sm font-semibold text-slate-900 dark:text-white">{entry.description || 'Sem descrição'}</p>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{entry.category}</span>
+                      <div className="flex flex-wrap gap-1">
+                        {(entry.categories || [entry.category]).map((cat: string) => (
+                          <span key={cat} className="text-[10px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-md font-medium">
+                            {cat}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <Badge variant={entry.type === 'income' ? 'success' : 'risk'}>
@@ -271,7 +308,10 @@ export function FinancialSection({ financial }: FinancialSectionProps) {
                           <Edit2 className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                         </button>
                         <button 
-                          onClick={() => handleDelete(entry.id)}
+                          onClick={() => {
+                            setEntryToDelete(entry.id);
+                            setIsDeleteModalOpen(true);
+                          }}
                           className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded transition-colors"
                         >
                           <Trash2 className="w-4 h-4 text-rose-400 dark:text-rose-500" />
@@ -319,7 +359,7 @@ export function FinancialSection({ financial }: FinancialSectionProps) {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Tipo</label>
               <select 
@@ -332,19 +372,20 @@ export function FinancialSection({ financial }: FinancialSectionProps) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Categoria</label>
-              <select 
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
-              >
-                <option value="Tráfego Pago">Tráfego Pago</option>
-                <option value="Social Media">Social Media</option>
-                <option value="IA">IA</option>
-                <option value="Sites">Sites</option>
-                <option value="Branding">Branding</option>
-                <option value="Outros">Outros</option>
-              </select>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Categorias (Selecione uma ou mais)</label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {['Tráfego Pago', 'Social Media', 'IA', 'Sites', 'Branding', 'Outros'].map(cat => (
+                  <label key={cat} className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:border-violet-500 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      checked={formData.categories.includes(cat)}
+                      onChange={() => toggleCategory(cat)}
+                      className="w-4 h-4 text-violet-600 rounded border-slate-300 focus:ring-violet-500"
+                    />
+                    <span className="text-xs text-slate-600 dark:text-slate-300">{cat}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -398,6 +439,34 @@ export function FinancialSection({ financial }: FinancialSectionProps) {
             {loading ? 'Salvando...' : (selectedEntry ? 'Atualizar Transação' : 'Registrar Transação')}
           </button>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Excluir Transação"
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/30 rounded-xl">
+            <p className="text-sm text-rose-800 dark:text-rose-400">
+              Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDelete}
+              className="flex-1 px-4 py-2 bg-rose-600 text-white rounded-lg font-bold text-sm hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200 dark:shadow-none"
+            >
+              Excluir
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

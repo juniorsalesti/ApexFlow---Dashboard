@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useCompany } from '../contexts/CompanyContext';
 import { 
   Briefcase, 
@@ -44,9 +44,10 @@ const PROJECT_TYPE_COLORS: Record<string, string> = {
 interface ProjectsSectionProps {
   projects: any[];
   financial: any[];
+  allFinancial: any[];
 }
 
-export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
+export function ProjectsSection({ projects, financial, allFinancial }: ProjectsSectionProps) {
   const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,7 +65,6 @@ export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
     e.preventDefault();
     const companyId = selectedCompanyId || formData.companyId;
     if (!companyId) {
-      alert('Por favor, selecione uma empresa para vincular este projeto.');
       return;
     }
     setLoading(true);
@@ -104,12 +104,27 @@ export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
     }
   };
 
-  const projectRevenue = projects
-    .filter(p => p.status === 'delivered')
-    .reduce((acc, curr) => acc + (curr.value || 0), 0);
+  // Project revenue from financial entries (Sites, Landing Page, Branding, Automação)
+  const projectRevenue = useMemo(() => {
+    return financial.reduce((acc, curr) => {
+      if (curr.type === 'income') {
+        const categories = curr.categories || (curr.category ? [curr.category] : []);
+        const projectCategories = categories.filter((cat: string) => 
+          ['Sites', 'Landing Page', 'Branding', 'Automação'].includes(cat)
+        );
+        
+        if (projectCategories.length > 0) {
+          const portion = projectCategories.length / categories.length;
+          return acc + (curr.value * portion);
+        }
+      }
+      return acc;
+    }, 0);
+  }, [financial]);
 
   const projectCount = projects.length;
-  const avgProjectTicket = projectCount > 0 ? projectRevenue / projects.filter(p => p.status === 'delivered').length || 0 : 0;
+  const deliveredCount = projects.filter(p => p.status === 'delivered').length;
+  const avgProjectTicket = deliveredCount > 0 ? projectRevenue / deliveredCount : 0;
   const projectsInProgress = projects.filter(p => p.status === 'execution').length;
   const projectsDelayed = projects.filter(p => p.status === 'delayed').length;
 
@@ -131,13 +146,37 @@ export function ProjectsSection({ projects, financial }: ProjectsSectionProps) {
     { id: 'delayed', label: 'Atrasado', icon: AlertCircle, color: 'bg-rose-100 text-rose-600' },
   ];
 
-  // Process data for chart
-  const chartData = [
-    { month: 'Jan', projectRevenue: 0 },
-    { month: 'Fev', projectRevenue: 0 },
-    { month: 'Mar', projectRevenue: 0 },
-    { month: 'Abr', projectRevenue: projectRevenue },
-  ];
+  // Process data for chart - last 6 months
+  const chartData = useMemo(() => {
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const now = new Date();
+    const data = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      
+      const monthRevenue = allFinancial
+        .reduce((acc, curr) => {
+          const entryDate = new Date(curr.date);
+          if (entryDate.getMonth() === m && entryDate.getFullYear() === y && curr.type === 'income') {
+            const categories = curr.categories || (curr.category ? [curr.category] : []);
+            const projectCategories = categories.filter((cat: string) => 
+              ['Sites', 'Landing Page', 'Branding', 'Automação'].includes(cat)
+            );
+            if (projectCategories.length > 0) {
+              const portion = projectCategories.length / categories.length;
+              return acc + (curr.value * portion);
+            }
+          }
+          return acc;
+        }, 0);
+        
+      data.push({ month: months[m], projectRevenue: monthRevenue });
+    }
+    return data;
+  }, [allFinancial]);
 
   return (
     <div className="space-y-8">

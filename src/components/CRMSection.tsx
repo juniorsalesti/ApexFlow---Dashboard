@@ -128,7 +128,6 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
     e.preventDefault();
     const companyId = selectedCompanyId || formData.companyId;
     if (!companyId) {
-      alert('Por favor, selecione uma empresa para vincular este lead.');
       return;
     }
     setLoading(true);
