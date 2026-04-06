@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "A client of the agency",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Client name" },
+        "company": { "type": "string", "description": "Company name" },
+        "companyId": { "type": "string", "description": "Reference to the company" },
+        "status": { "type": "string", "enum": ["active", "inactive"], "description": "Client status" },
+        "joinedAt": { "type": "string", "format": "date-time", "description": "When the client joined" },
+        "type": { "type": "string", "enum": ["recurrent", "project", "both"], "description": "Type of client" },
+        "userId": { "type": "string", "description": "Owner of this client record" }
+      },
+      "required": ["name", "company", "companyId", "status", "joinedAt", "type", "userId"]
+    },
+    "Contract": {
+      "title": "Contract",
+      "description": "A recurrent contract with a client",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string", "description": "Reference to the client" },
+        "companyId": { "type": "string", "description": "Reference to the company" },
+        "monthlyValue": { "type": "number", "description": "Monthly value of the contract" },
+        "service": { "type": "string", "description": "Service provided" },
+        "startDate": { "type": "string", "format": "date-time", "description": "Contract start date" },
+        "status": { "type": "string", "enum": ["active", "cancelled"], "description": "Contract status" },
+        "userId": { "type": "string", "description": "Owner of this contract record" }
+      },
+      "required": ["clientId", "companyId", "monthlyValue", "service", "startDate", "status", "userId"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A one-time project for a client",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string", "description": "Reference to the client" },
+        "companyId": { "type": "string", "description": "Reference to the company" },
+        "name": { "type": "string", "description": "Project name" },
+        "type": { "type": "string", "enum": ["Site", "Landing Page", "Branding", "Automação"], "description": "Project type" },
+        "value": { "type": "number", "description": "Total project value" },
+        "status": { "type": "string", "enum": ["negotiation", "execution", "delivered", "delayed"], "description": "Project status" },
+        "startDate": { "type": "string", "format": "date-time", "description": "Project start date" },
+        "deadline": { "type": "string", "format": "date-time", "description": "Project deadline" },
+        "deliveryDate": { "type": "string", "format": "date-time", "description": "Actual delivery date" },
+        "userId": { "type": "string", "description": "Owner of this project record" }
+      },
+      "required": ["clientId", "companyId", "name", "type", "value", "status", "startDate", "userId"]
+    },
+    "FinancialEntry": {
+      "title": "FinancialEntry",
+      "description": "A financial transaction record",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["income"], "description": "Transaction type" },
+        "value": { "type": "number", "description": "Transaction value" },
+        "companyId": { "type": "string", "description": "Reference to the company" },
+        "source": { "type": "string", "enum": ["recurrent", "project"], "description": "Revenue source" },
+        "date": { "type": "string", "format": "date-time", "description": "Transaction date" },
+        "userId": { "type": "string", "description": "Owner of this financial record" }
+      },
+      "required": ["type", "value", "companyId", "source", "date", "userId"]
+    },
+    "CommercialStats": {
+      "title": "CommercialStats",
+      "description": "Monthly commercial performance metrics",
+      "type": "object",
+      "properties": {
+        "leads": { "type": "integer", "description": "Number of leads" },
+        "meetings": { "type": "integer", "description": "Number of meetings" },
+        "proposals": { "type": "integer", "description": "Number of proposals" },
+        "sales": { "type": "integer", "description": "Number of sales" },
+        "companyId": { "type": "string", "description": "Reference to the company" },
+        "conversionRate": { "type": "number", "description": "Conversion rate percentage" },
+        "month": { "type": "string", "description": "Month identifier (e.g., Jan)" },
+        "userId": { "type": "string", "description": "Owner of this record" }
+      },
+      "required": ["leads", "meetings", "proposals", "sales", "companyId", "conversionRate", "month", "userId"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "A sales lead in the pipeline",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Lead name" },
+        "company": { "type": "string", "description": "Company name" },
+        "companyId": { "type": "string", "description": "Reference to the company" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "email": { "type": "string", "description": "Email address" },
+        "source": { "type": "string", "description": "Lead source" },
+        "value": { "type": "number", "description": "Potential value" },
+        "status": { "type": "string", "enum": ["lead", "contact", "meeting", "proposal", "won", "lost"], "description": "Pipeline status" },
+        "owner": { "type": "string", "description": "Responsible person" },
+        "notes": { "type": "string", "description": "Observations" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" },
+        "userId": { "type": "string", "description": "Owner of this lead record" }
+      },
+      "required": ["name", "company", "companyId", "status", "createdAt", "userId"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "A company managed by the user",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Company name" },
+        "userId": { "type": "string", "description": "Owner of this company record" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" }
+      },
+      "required": ["name", "userId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "clients": { "schema": { "$ref": "Client" }, "description": "Collection of clients" },
+    "contracts": { "schema": { "$ref": "Contract" }, "description": "Collection of contracts" },
+    "projects": { "schema": { "$ref": "Project" }, "description": "Collection of projects" },
+    "financial": { "schema": { "$ref": "FinancialEntry" }, "description": "Collection of financial entries" },
+    "commercial": { "schema": { "$ref": "CommercialStats" }, "description": "Collection of commercial stats" },
+    "leads": { "schema": { "$ref": "Lead" }, "description": "Collection of sales leads" },
+    "companies": { "schema": { "$ref": "Company" }, "description": "Collection of companies" }
+  }
+}
