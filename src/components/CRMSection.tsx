@@ -92,6 +92,61 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
     companyId: ''
   });
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      company: '',
+      phone: '',
+      email: '',
+      source: '',
+      value: 0,
+      status: 'lead',
+      owner: '',
+      notes: '',
+      companyId: ''
+    });
+    setSelectedLead(null);
+  };
+
+  const handleSaveLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const companyId = selectedCompanyId || formData.companyId;
+    if (!companyId) {
+      return;
+    }
+    setLoading(true);
+    try {
+      if (selectedLead) {
+        await updateLead(selectedLead.id, formData);
+      } else {
+        await addLead(formData, companyId);
+      }
+      setIsModalOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditLead = (lead: any) => {
+    setSelectedLead(lead);
+    setFormData({
+      name: lead.name || '',
+      company: lead.company || '',
+      phone: lead.phone || '',
+      email: lead.email || '',
+      source: lead.source || '',
+      value: lead.value || 0,
+      status: lead.status || 'lead',
+      owner: lead.owner || '',
+      notes: lead.notes || '',
+      companyId: lead.companyId || ''
+    });
+    setIsModalOpen(true);
+  };
+
   const [wonFormData, setWonFormData] = useState({
     type: 'contract', // 'contract' or 'project'
     monthlyValue: 0,
@@ -124,35 +179,6 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
 
     return { totalLeads, conversionRate, potentialRevenue, avgTicket };
   }, [leads]);
-
-  const handleAddLead = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const companyId = selectedCompanyId || formData.companyId;
-    if (!companyId) {
-      return;
-    }
-    setLoading(true);
-    try {
-      await addLead(formData, companyId);
-      setIsModalOpen(false);
-      setFormData({
-        name: '',
-        company: '',
-        phone: '',
-        email: '',
-        source: '',
-        value: 0,
-        status: 'lead',
-        owner: '',
-        notes: '',
-        companyId: ''
-      });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleUpdateStatus = async (leadId: string, newStatus: string) => {
     const lead = leads.find(l => l.id === leadId);
@@ -287,6 +313,7 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
               key={column.id} 
               column={column} 
               leads={leads.filter(l => l.status === column.id)} 
+              onEdit={handleEditLead}
             />
           ))}
         </div>
@@ -306,9 +333,9 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
         </DragOverlay>
       </DndContext>
 
-      {/* New Lead Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Novo Lead">
-        <form onSubmit={handleAddLead} className="space-y-4">
+      {/* Lead Modal */}
+      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); }} title={selectedLead ? "Editar Lead" : "Novo Lead"}>
+        <form onSubmit={handleSaveLead} className="space-y-4">
           {!selectedCompanyId && (
             <div>
               <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Vincular à Empresa</label>
@@ -411,7 +438,7 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
             disabled={loading}
             className="w-full bg-violet-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-50"
           >
-            {loading ? 'Salvando...' : 'Criar Lead'}
+            {loading ? 'Salvando...' : (selectedLead ? 'Atualizar Lead' : 'Criar Lead')}
           </button>
         </form>
       </Modal>
@@ -530,7 +557,7 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
   );
 }
 
-function KanbanColumn({ column, leads }: { column: any, leads: any[], key?: any }) {
+function KanbanColumn({ column, leads, onEdit }: { column: any, leads: any[], onEdit: (lead: any) => void, key?: any }) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -550,7 +577,7 @@ function KanbanColumn({ column, leads }: { column: any, leads: any[], key?: any 
           className={`flex-1 space-y-3 p-1 rounded-xl min-h-[500px] transition-colors ${isOver ? 'bg-violet-50/50 dark:bg-violet-900/10' : 'bg-slate-50/50 dark:bg-slate-900/20'}`}
         >
           {leads.map(lead => (
-            <LeadCard key={lead.id} lead={lead} />
+            <LeadCard key={lead.id} lead={lead} onEdit={onEdit} />
           ))}
           {leads.length === 0 && (
             <div className="py-8 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl">
@@ -563,7 +590,7 @@ function KanbanColumn({ column, leads }: { column: any, leads: any[], key?: any 
   );
 }
 
-function LeadCard({ lead, isOverlay }: { lead: any, isOverlay?: boolean, key?: any }) {
+function LeadCard({ lead, onEdit, isOverlay }: { lead: any, onEdit?: (lead: any) => void, isOverlay?: boolean, key?: any }) {
   const {
     attributes,
     listeners,
@@ -585,42 +612,47 @@ function LeadCard({ lead, isOverlay }: { lead: any, isOverlay?: boolean, key?: a
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={`p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:border-violet-300 dark:hover:border-violet-700 transition-all cursor-grab active:cursor-grabbing group ${isOverlay ? 'shadow-xl border-violet-400 rotate-2' : ''}`}
+      className={`p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:border-violet-300 dark:hover:border-violet-700 transition-all group ${isOverlay ? 'shadow-xl border-violet-400 rotate-2' : ''}`}
     >
       <div className="flex justify-between items-start mb-3">
-        <div>
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing flex-1">
           <h5 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{lead.company}</h5>
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{lead.name}</p>
         </div>
-        <button className="p-1 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors">
-          <MoreVertical className="w-4 h-4 text-slate-400 dark:text-slate-600" />
-        </button>
-      </div>
-
-      <div className="space-y-2 mb-4">
-        {lead.value > 0 && (
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-slate-100">
-            <DollarSign className="w-3 h-3 text-emerald-500" />
-            {formatCurrency(lead.value)}
-          </div>
+        {!isOverlay && (
+          <button 
+            onClick={() => onEdit?.(lead)}
+            className="p-1.5 text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/50 rounded-lg transition-colors"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
         )}
-        <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
-          <Building2 className="w-3 h-3" />
-          {lead.source || 'Origem não informada'}
-        </div>
       </div>
 
-      <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800">
-        <div className="flex -space-x-2">
-          <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/30 border-2 border-white dark:border-slate-900 flex items-center justify-center">
-            <span className="text-[8px] font-bold text-violet-600 dark:text-violet-400">{lead.owner?.charAt(0) || 'U'}</span>
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+        <div className="space-y-2 mb-4">
+          {lead.value > 0 && (
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-slate-100">
+              <DollarSign className="w-3 h-3 text-emerald-500" />
+              {formatCurrency(lead.value)}
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+            <Building2 className="w-3 h-3" />
+            {lead.source || 'Origem não informada'}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {lead.phone && <Phone className="w-3 h-3 text-slate-300 dark:text-slate-600" />}
-          {lead.email && <Mail className="w-3 h-3 text-slate-300 dark:text-slate-600" />}
+
+        <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800">
+          <div className="flex -space-x-2">
+            <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/30 border-2 border-white dark:border-slate-900 flex items-center justify-center">
+              <span className="text-[8px] font-bold text-violet-600 dark:text-violet-400">{lead.owner?.charAt(0) || 'U'}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {lead.phone && <Phone className="w-3 h-3 text-slate-300 dark:text-slate-600" />}
+            {lead.email && <Mail className="w-3 h-3 text-slate-300 dark:text-slate-600" />}
+          </div>
         </div>
       </div>
     </div>
