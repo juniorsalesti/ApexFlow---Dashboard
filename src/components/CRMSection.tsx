@@ -186,6 +186,13 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
 
     if (newStatus === 'won' && lead.status !== 'won') {
       setSelectedLead(lead);
+      setWonFormData({
+        type: 'contract',
+        monthlyValue: lead.value || 0,
+        projectValue: lead.value || 0,
+        service: '',
+        projectType: 'Site'
+      });
       setIsWonModalOpen(true);
       return;
     }
@@ -199,7 +206,8 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
 
   const handleWonIntegration = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedLead || !selectedCompanyId) return;
+    const targetCompanyId = selectedCompanyId || selectedLead?.companyId;
+    if (!selectedLead || !targetCompanyId) return;
     setLoading(true);
     try {
       // 1. Create Client
@@ -208,7 +216,7 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
         company: selectedLead.company,
         status: 'active',
         type: wonFormData.type === 'contract' ? 'recurrent' : 'project'
-      }, selectedCompanyId);
+      }, targetCompanyId);
 
       if (clientRes) {
         // 2. Create Contract or Project
@@ -218,7 +226,7 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
             monthlyValue: wonFormData.monthlyValue,
             service: wonFormData.service,
             status: 'active'
-          }, selectedCompanyId);
+          }, targetCompanyId);
         } else {
           await addProject({
             clientId: clientRes.id,
@@ -227,7 +235,7 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
             value: wonFormData.projectValue,
             status: 'execution',
             origin: 'crm'
-          }, selectedCompanyId);
+          }, targetCompanyId);
         }
       }
 
