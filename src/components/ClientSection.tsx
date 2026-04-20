@@ -6,7 +6,7 @@ import { Modal } from './ui/Modal';
 import { formatCurrency, cn } from '../lib/utils';
 import { addClient, updateClient, deleteClient, updateContract, deleteContract, addFinancialEntry, addContract, deleteFinancialEntry } from '../services/db';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle, DollarSign, Calendar, XCircle, Ban, CreditCard } from 'lucide-react';
+import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle, DollarSign, Calendar, XCircle, Ban, CreditCard, Power } from 'lucide-react';
 
 interface ClientSectionProps {
   clients: any[];
@@ -169,12 +169,29 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
     }
   };
 
-  const handleCancelContract = async (contract: any) => {
-    if (!confirm('Tem certeza que deseja cancelar este contrato? ele passará a constar como inativo.')) return;
+  const handleToggleClientStatus = async (client: any) => {
+    setLoading(true);
+    const newStatus = client.status === 'active' ? 'inactive' : 'active';
     try {
-      await updateContract(contract.id, { status: 'canceled' });
+      await updateClient(client.id, { status: newStatus });
     } catch (error) {
       console.error(error);
+      alert('Erro ao atualizar status do cliente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleContractStatus = async (contract: any) => {
+    setLoading(true);
+    const newStatus = contract.status === 'active' ? 'cancelled' : 'active';
+    try {
+      await updateContract(contract.id, { status: newStatus });
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao atualizar status do contrato.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -277,6 +294,16 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
   const openHistoryModal = (client: any) => {
     setSelectedClient(client);
     setIsHistoryModalOpen(true);
+  };
+
+  const getStatusVariant = (status: string): 'success' | 'attention' | 'danger' | 'default' => {
+    switch (status) {
+      case 'active': return 'success';
+      case 'inactive': return 'attention';
+      case 'canceled':
+      case 'cancelled': return 'danger';
+      default: return 'default';
+    }
   };
 
   // Calculate real metrics
@@ -428,7 +455,10 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                     const totalBilled = clientFinancial.reduce((acc, curr) => acc + (curr.value || 0), 0);
                     
                     return (
-                      <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <tr key={client.id} className={cn(
+                        "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors",
+                        client.status === 'inactive' && "opacity-50 grayscale"
+                      )}>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-400">
@@ -439,16 +469,25 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{client.company}</td>
                         <td className="px-4 py-4">
-                          <Badge variant={client.status}>{client.status}</Badge>
+                          <Badge variant={getStatusVariant(client.status)}>{client.status}</Badge>
                         </td>
                         <td className="px-4 py-4">
                           {(() => {
-                            const contract = contracts.find(c => c.clientId === client.id && c.status === 'active');
+                            const contract = contracts.find(c => c.clientId === client.id);
                             const currentMonth = new Date().toISOString().slice(0, 7);
                             const isPaid = contract?.payments?.[currentMonth];
                             
                             if (!contract) return <span className="text-xs text-slate-300 dark:text-slate-700 italic">Sem contrato</span>;
                             
+                            if (contract.status !== 'active') {
+                              return (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue)}/mês</span>
+                                  <Badge variant="attention" className="w-fit">Pausado</Badge>
+                                </div>
+                              );
+                            }
+
                             return (
                               <div className="flex flex-col gap-1">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue)}/mês</span>
@@ -483,7 +522,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                         <td className="px-4 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {(() => {
-                              const contract = contracts.find(c => c.clientId === client.id && c.status === 'active');
+                              const contract = contracts.find(c => c.clientId === client.id);
                               return contract ? (
                                 <div className="flex items-center gap-1">
                                   <button 
@@ -493,6 +532,25 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                                   >
                                     <CreditCard className="w-4 h-4" />
                                   </button>
+                                  {contract.status === 'active' ? (
+                                    <button 
+                                      onClick={() => handleToggleContractStatus(contract)}
+                                      disabled={loading}
+                                      className="p-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors text-slate-400 hover:text-amber-600 disabled:opacity-50"
+                                      title="Desativar Recorrência"
+                                    >
+                                      <Power className="w-4 h-4" />
+                                    </button>
+                                  ) : (
+                                    <button 
+                                      onClick={() => handleToggleContractStatus(contract)}
+                                      disabled={loading}
+                                      className="p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-lg transition-colors text-slate-400 hover:text-emerald-600 disabled:opacity-50"
+                                      title="Ativar Recorrência"
+                                    >
+                                      <Power className="w-4 h-4" />
+                                    </button>
+                                  )}
                                   <button 
                                     onClick={(e) => handleDeleteContract(e, contract)}
                                     disabled={loading}
@@ -508,10 +566,23 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                                   className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
                                   title="Adicionar Recorrência (Contrato)"
                                 >
-                                  <CreditCard className="w-4 h-4" />
+                                  <Plus className="w-4 h-4" />
                                 </button>
                               );
                             })()}
+                            <button 
+                              onClick={() => handleToggleClientStatus(client)}
+                              disabled={loading}
+                              className={cn(
+                                "p-1.5 rounded-lg transition-colors disabled:opacity-50",
+                                client.status === 'active' 
+                                  ? "hover:bg-amber-100 dark:hover:bg-amber-900/30 text-slate-400 hover:text-amber-600"
+                                  : "hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-slate-400 hover:text-emerald-600"
+                              )}
+                              title={client.status === 'active' ? "Desativar Cliente" : "Ativar Cliente"}
+                            >
+                              <Power className="w-4 h-4" />
+                            </button>
                             <button 
                               onClick={() => openHistoryModal(client)}
                               className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-violet-600 dark:hover:text-violet-400"
@@ -572,11 +643,12 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                   <th className="px-4 py-3">Serviço</th>
                   <th className="px-4 py-3">Valor Mensal</th>
                   <th className="px-4 py-3">Status Pagamento</th>
+                  <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                {contracts.sort((a, b) => (a.status === 'canceled' ? 1 : -1)).map((contract) => {
+                {contracts.sort((a, b) => (a.status === 'cancelled' || a.status === 'canceled' ? 1 : -1)).map((contract) => {
                   const client = clients.find(c => c.id === contract.clientId);
                   const currentMonth = new Date().toISOString().slice(0, 7);
                   const isPaid = contract.payments?.[currentMonth];
@@ -584,7 +656,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                   return (
                     <tr key={contract.id} className={cn(
                       "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors",
-                      contract.status === 'canceled' && "opacity-50 grayscale"
+                      (contract.status === 'cancelled' || contract.status === 'canceled') && "opacity-50 grayscale"
                     )}>
                       <td className="px-4 py-4">
                         <div className="flex flex-col">
@@ -625,6 +697,9 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                           <Badge variant="risk">Cancelado</Badge>
                         )}
                       </td>
+                      <td className="px-4 py-4">
+                        <Badge variant={getStatusVariant(contract.status)}>{contract.status}</Badge>
+                      </td>
                       <td className="px-4 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button 
@@ -636,19 +711,21 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                           </button>
                           {contract.status === 'active' ? (
                             <button 
-                              onClick={() => handleCancelContract(contract)}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-amber-600"
-                              title="Cancelar Contrato"
+                              onClick={() => handleToggleContractStatus(contract)}
+                              disabled={loading}
+                              className="p-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors text-slate-400 hover:text-amber-600 disabled:opacity-50"
+                              title="Desativar Recorrência"
                             >
-                              <Ban className="w-4 h-4" />
+                              <Power className="w-4 h-4" />
                             </button>
                           ) : (
                             <button 
-                              onClick={() => updateContract(contract.id, { status: 'active' })}
-                              className="p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-lg transition-colors text-slate-400 hover:text-emerald-600"
-                              title="Reativar Contrato"
+                              onClick={() => handleToggleContractStatus(contract)}
+                              disabled={loading}
+                              className="p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-lg transition-colors text-slate-400 hover:text-emerald-600 disabled:opacity-50"
+                              title="Ativar Recorrência"
                             >
-                              <CheckCircle2 className="w-4 h-4" />
+                              <Power className="w-4 h-4" />
                             </button>
                           )}
                           <button 
