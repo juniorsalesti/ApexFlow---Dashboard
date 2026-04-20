@@ -468,8 +468,17 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                           </div>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{client.company}</td>
-                        <td className="px-4 py-4">
-                          <Badge variant={getStatusVariant(client.status)}>{client.status}</Badge>
+                        <td className="px-4 py-4 uppercase">
+                          <button 
+                            onClick={() => handleToggleClientStatus(client)}
+                            disabled={loading}
+                            className="transition-transform hover:scale-110 active:scale-95 disabled:opacity-50 cursor-pointer"
+                            title={client.status === 'active' ? "Clique para Desativar" : "Clique para Ativar"}
+                          >
+                            <Badge variant={getStatusVariant(client.status)}>
+                              {client.status === 'active' ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </button>
                         </td>
                         <td className="px-4 py-4">
                           {(() => {
@@ -697,8 +706,17 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                           <Badge variant="risk">Cancelado</Badge>
                         )}
                       </td>
-                      <td className="px-4 py-4">
-                        <Badge variant={getStatusVariant(contract.status)}>{contract.status}</Badge>
+                      <td className="px-4 py-4 uppercase">
+                        <button 
+                          onClick={() => handleToggleContractStatus(contract)}
+                          disabled={loading}
+                          className="transition-transform hover:scale-110 active:scale-95 disabled:opacity-50 cursor-pointer"
+                          title={contract.status === 'active' ? "Clique para Desativar" : "Clique para Ativar"}
+                        >
+                          <Badge variant={getStatusVariant(contract.status)}>
+                            {contract.status === 'active' ? 'Ativo' : (contract.status === 'cancelled' || contract.status === 'canceled' ? 'Cancelado' : contract.status)}
+                          </Badge>
+                        </button>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
