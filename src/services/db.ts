@@ -240,6 +240,24 @@ export const addContract = async (data: any, companyId: string) => {
   }
 };
 
+export const updateContract = async (id: string, data: any) => {
+  try {
+    const docRef = doc(db, contractsCol, id);
+    return await updateDoc(docRef, data);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, contractsCol);
+  }
+};
+
+export const deleteContract = async (id: string) => {
+  try {
+    const docRef = doc(db, contractsCol, id);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, contractsCol);
+  }
+};
+
 // CRUD for Financial
 export const subscribeFinancial = (callback: (data: any[]) => void, companyId?: string | null) => {
   const userId = auth.currentUser?.uid;

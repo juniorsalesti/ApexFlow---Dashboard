@@ -3,10 +3,10 @@ import { useCompany } from '../contexts/CompanyContext';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Modal } from './ui/Modal';
-import { formatCurrency } from '../lib/utils';
-import { addClient, updateClient, deleteClient } from '../services/db';
+import { formatCurrency, cn } from '../lib/utils';
+import { addClient, updateClient, deleteClient, updateContract, deleteContract, addFinancialEntry, addContract, deleteFinancialEntry } from '../services/db';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle, DollarSign, Calendar } from 'lucide-react';
+import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle, DollarSign, Calendar, XCircle, Ban, CreditCard } from 'lucide-react';
 
 interface ClientSectionProps {
   clients: any[];
@@ -17,17 +17,32 @@ interface ClientSectionProps {
 
 export function ClientSection({ clients, projects, contracts, financial }: ClientSectionProps) {
   const { selectedCompanyId, companies } = useCompany();
+  const [activeSubTab, setActiveSubTab] = useState<'clients' | 'contracts'>('clients');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isContractDeleteModalOpen, setIsContractDeleteModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [selectedContractToDelete, setSelectedContractToDelete] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     company: '',
     status: 'active',
     type: 'recurrent',
+    companyId: '',
+    recurringService: '',
+    recurringValue: 0
+  });
+
+  const [contractFormData, setContractFormData] = useState({
+    id: '',
+    clientId: '',
+    service: '',
+    monthlyValue: 0,
+    status: 'active' as const,
     companyId: ''
   });
 
@@ -39,9 +54,32 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
     }
     setLoading(true);
     try {
-      await addClient(formData, companyId);
+      const clientRef = await addClient({
+        name: formData.name,
+        company: formData.company,
+        status: formData.status,
+        type: formData.type
+      }, companyId);
+
+      if (formData.recurringValue > 0 && clientRef) {
+        await addContract({
+          clientId: clientRef.id,
+          service: formData.recurringService || 'Consultoria de Recorrência',
+          monthlyValue: Number(formData.recurringValue),
+          status: 'active',
+        }, companyId);
+      }
+
       setIsModalOpen(false);
-      setFormData({ name: '', company: '', status: 'active', type: 'recurrent', companyId: '' });
+      setFormData({ 
+        name: '', 
+        company: '', 
+        status: 'active', 
+        type: 'recurrent', 
+        companyId: '',
+        recurringService: '',
+        recurringValue: 0
+      });
     } catch (error) {
       console.error(error);
     } finally {
@@ -77,6 +115,146 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTogglePayment = async (contract: any) => {
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const client = clients.find(c => c.id === contract.clientId);
+    const isPaid = contract.payments?.[currentMonth];
+    
+    setLoading(true);
+    try {
+      if (isPaid) {
+        // Desmarcar pagamento
+        const entryToDelete = financial.find(f => 
+          f.clientId === contract.clientId && 
+          f.monthRef === currentMonth && 
+          f.type === 'income'
+        );
+
+        if (entryToDelete) {
+          await deleteFinancialEntry(entryToDelete.id);
+        }
+
+        const updatedPayments = { ...(contract.payments || {}) };
+        delete updatedPayments[currentMonth];
+        
+        await updateContract(contract.id, {
+          payments: updatedPayments
+        });
+      } else {
+        // Marcar como pago
+        await addFinancialEntry({
+          type: 'income',
+          categories: [contract.service || 'Contrato Recorrente'],
+          category: contract.service || 'Contrato Recorrente',
+          value: Number(contract.monthlyValue),
+          date: new Date().toISOString(),
+          description: `Recebimento Mensal: ${contract.service} - ${client?.company || 'Cliente'}`,
+          companyId: contract.companyId,
+          clientId: contract.clientId,
+          monthRef: currentMonth
+        }, contract.companyId);
+
+        const updatedPayments = { ...(contract.payments || {}), [currentMonth]: true };
+        await updateContract(contract.id, {
+          payments: updatedPayments,
+          lastPaymentDate: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelContract = async (contract: any) => {
+    if (!confirm('Tem certeza que deseja cancelar este contrato? ele passará a constar como inativo.')) return;
+    try {
+      await updateContract(contract.id, { status: 'canceled' });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleDeleteContract = (e: React.MouseEvent, contract: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedContractToDelete(contract);
+    setIsContractDeleteModalOpen(true);
+  };
+
+  const handleConfirmDeleteContract = async () => {
+    if (!selectedContractToDelete?.id) return;
+    
+    setLoading(true);
+    try {
+      await deleteContract(selectedContractToDelete.id);
+      setIsContractDeleteModalOpen(false);
+      setSelectedContractToDelete(null);
+    } catch (error) {
+      console.error('Error deleting contract:', error);
+      alert('Ocorreu um erro ao excluir o contrato. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveContract = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetCompanyId = selectedCompanyId || contractFormData.companyId;
+    if (!contractFormData.clientId || !targetCompanyId) return;
+    
+    setLoading(true);
+    try {
+      if (contractFormData.id) {
+        // Edit existing contract
+        await updateContract(contractFormData.id, {
+          service: contractFormData.service,
+          monthlyValue: Number(contractFormData.monthlyValue),
+          status: contractFormData.status,
+        });
+      } else {
+        // Create new contract
+        await addContract({
+          clientId: contractFormData.clientId,
+          service: contractFormData.service,
+          monthlyValue: Number(contractFormData.monthlyValue),
+          status: contractFormData.status,
+        }, targetCompanyId);
+      }
+      setIsContractModalOpen(false);
+      setContractFormData({ id: '', clientId: '', service: '', monthlyValue: 0, status: 'active', companyId: '' });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openContractModal = (client?: any) => {
+    setContractFormData({
+      id: '',
+      clientId: client?.id || '',
+      service: '',
+      monthlyValue: 0,
+      status: 'active',
+      companyId: client?.companyId || selectedCompanyId || ''
+    });
+    setIsContractModalOpen(true);
+  };
+
+  const openEditContractModal = (contract: any) => {
+    setContractFormData({
+      id: contract.id,
+      clientId: contract.clientId,
+      service: contract.service,
+      monthlyValue: contract.monthlyValue,
+      status: contract.status,
+      companyId: contract.companyId
+    });
+    setIsContractModalOpen(true);
   };
 
   const openEditModal = (client: any) => {
@@ -119,19 +297,42 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white transition-colors">Gestão de Clientes</h3>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white transition-colors">Gestão de Clientes & Recorrência</h3>
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mt-3 w-fit">
+            <button 
+              onClick={() => setActiveSubTab('clients')}
+              className={cn(
+                "px-4 py-1.5 text-xs font-bold rounded-md transition-all",
+                activeSubTab === 'clients' ? "bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              )}
+            >
+              Clientes
+            </button>
+            <button 
+              onClick={() => setActiveSubTab('contracts')}
+              className={cn(
+                "px-4 py-1.5 text-xs font-bold rounded-md transition-all",
+                activeSubTab === 'contracts' ? "bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              )}
+            >
+              Contratos & Recorrência
+            </button>
+          </div>
+        </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none"
+          className="flex items-center justify-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none"
         >
           <Plus className="w-4 h-4" />
           Novo Cliente
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card title="Base de Clientes" subtitle="Crescimento histórico" className="lg:col-span-2">
+      {activeSubTab === 'clients' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card title="Base de Clientes" subtitle="Crescimento histórico" className="lg:col-span-2">
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
@@ -215,7 +416,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                   <th className="px-4 py-3">Cliente</th>
                   <th className="px-4 py-3">Empresa</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Projetos</th>
+                  <th className="px-4 py-3">Recorrência (Mês)</th>
                   <th className="px-4 py-3">Faturamento Total</th>
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
@@ -241,14 +442,37 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                           <Badge variant={client.status}>{client.status}</Badge>
                         </td>
                         <td className="px-4 py-4">
-                          {clientProjects.length > 0 ? (
-                            <div className="flex items-center gap-1.5">
-                              <Briefcase className="w-3 h-3 text-violet-500 dark:text-violet-400" />
-                              <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{clientProjects.length}</span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-300 dark:text-slate-700">-</span>
-                          )}
+                          {(() => {
+                            const contract = contracts.find(c => c.clientId === client.id && c.status === 'active');
+                            const currentMonth = new Date().toISOString().slice(0, 7);
+                            const isPaid = contract?.payments?.[currentMonth];
+                            
+                            if (!contract) return <span className="text-xs text-slate-300 dark:text-slate-700 italic">Sem contrato</span>;
+                            
+                            return (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue)}/mês</span>
+                                <button 
+                                  onClick={() => handleTogglePayment(contract)}
+                                  disabled={loading}
+                                  className="transition-all hover:scale-105 active:scale-95"
+                                  title={isPaid ? "Desmarcar recebimento" : "Marcar como recebido"}
+                                >
+                                  {isPaid ? (
+                                    <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                      <CheckCircle2 className="w-3 h-3" />
+                                      <span className="text-[10px] font-bold">Pago</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 text-amber-600 hover:text-amber-700 font-bold">
+                                      <div className="w-3 h-3 rounded-full border border-amber-500"></div>
+                                      <span className="text-[10px]">Pendente</span>
+                                    </div>
+                                  )}
+                                </button>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex flex-col">
@@ -258,6 +482,36 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                         </td>
                         <td className="px-4 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            {(() => {
+                              const contract = contracts.find(c => c.clientId === client.id && c.status === 'active');
+                              return contract ? (
+                                <div className="flex items-center gap-1">
+                                  <button 
+                                    onClick={() => openEditContractModal(contract)}
+                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-violet-600 dark:hover:text-violet-400"
+                                    title="Editar Recorrência"
+                                  >
+                                    <CreditCard className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => handleDeleteContract(e, contract)}
+                                    disabled={loading}
+                                    className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg transition-colors text-slate-400 hover:text-rose-600 disabled:opacity-50"
+                                    title="Excluir Recorrência"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button 
+                                  onClick={() => openContractModal(client)}
+                                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
+                                  title="Adicionar Recorrência (Contrato)"
+                                >
+                                  <CreditCard className="w-4 h-4" />
+                                </button>
+                              );
+                            })()}
                             <button 
                               onClick={() => openHistoryModal(client)}
                               className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-violet-600 dark:hover:text-violet-400"
@@ -296,6 +550,132 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
           </div>
         </Card>
       </div>
+      ) : (
+        <Card 
+          title="Contratos & Recorrência" 
+          subtitle="Gestão de pagamentos recorrentes e assinaturas"
+          action={
+            <button 
+              onClick={() => openContractModal()}
+              className="flex items-center gap-2 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 dark:shadow-none"
+            >
+              <Plus className="w-3 h-3" />
+              Novo Contrato
+            </button>
+          }
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase border-b border-slate-100 dark:border-slate-800">
+                  <th className="px-4 py-3">Cliente / Empresa</th>
+                  <th className="px-4 py-3">Serviço</th>
+                  <th className="px-4 py-3">Valor Mensal</th>
+                  <th className="px-4 py-3">Status Pagamento</th>
+                  <th className="px-4 py-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                {contracts.sort((a, b) => (a.status === 'canceled' ? 1 : -1)).map((contract) => {
+                  const client = clients.find(c => c.id === contract.clientId);
+                  const currentMonth = new Date().toISOString().slice(0, 7);
+                  const isPaid = contract.payments?.[currentMonth];
+                  
+                  return (
+                    <tr key={contract.id} className={cn(
+                      "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors",
+                      contract.status === 'canceled' && "opacity-50 grayscale"
+                    )}>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-slate-900 dark:text-white">{client?.company || 'Cliente não encontrado'}</span>
+                          <span className="text-xs text-slate-500">{client?.name || '-'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-slate-400" />
+                          <span className="text-sm text-slate-600 dark:text-slate-400">{contract.service}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(contract.monthlyValue)}
+                      </td>
+                      <td className="px-4 py-4">
+                        {contract.status === 'active' ? (
+                          <button 
+                            onClick={() => handleTogglePayment(contract)}
+                            disabled={loading}
+                            className="transition-all hover:scale-105 active:scale-95 text-left"
+                            title={isPaid ? "Desmarcar recebimento" : "Marcar como recebido"}
+                          >
+                            {isPaid ? (
+                              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span className="text-xs font-bold">Pago ({new Date().toLocaleString('pt-BR', { month: 'long' })})</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-amber-600 hover:text-amber-700 dark:text-amber-500 font-bold">
+                                <div className="w-4 h-4 rounded-full border-2 border-amber-500"></div>
+                                <span className="text-xs">Marcar Recebimento</span>
+                              </div>
+                            )}
+                          </button>
+                        ) : (
+                          <Badge variant="risk">Cancelado</Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => openEditContractModal(contract)}
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-violet-600 dark:hover:text-violet-400"
+                            title="Editar Contrato"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          {contract.status === 'active' ? (
+                            <button 
+                              onClick={() => handleCancelContract(contract)}
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-amber-600"
+                              title="Cancelar Contrato"
+                            >
+                              <Ban className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => updateContract(contract.id, { status: 'active' })}
+                              className="p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-lg transition-colors text-slate-400 hover:text-emerald-600"
+                              title="Reativar Contrato"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button 
+                            onClick={(e) => handleDeleteContract(e, contract)}
+                            disabled={loading}
+                            className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg transition-colors text-slate-400 hover:text-rose-600 disabled:opacity-50"
+                            title="Excluir Permanentemente"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {contracts.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 text-sm italic">
+                      Nenhum contrato recorrente registrado.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <Modal 
         isOpen={isModalOpen} 
@@ -376,6 +756,33 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                 <option value="risk">Risco</option>
               </select>
             </div>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4">
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Configuração de Recorrência (Opcional)</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Serviço/Plano</label>
+                <input 
+                  type="text" 
+                  value={formData.recurringService}
+                  onChange={(e) => setFormData({ ...formData, recurringService: e.target.value })}
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+                  placeholder="Ex: Gestor VIP"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Valor Mensal (R$)</label>
+                <input 
+                  type="number" 
+                  value={formData.recurringValue}
+                  onChange={(e) => setFormData({ ...formData, recurringValue: Number(e.target.value) })}
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-2 italic">Se preenchido, um contrato de recorrência será criado automaticamente para este cliente.</p>
           </div>
 
           <button 
@@ -554,6 +961,107 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Delete Contract Modal */}
+      <Modal 
+        isOpen={isContractDeleteModalOpen} 
+        onClose={() => setIsContractDeleteModalOpen(false)} 
+        title="Excluir Recorrência"
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/30 rounded-xl flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-rose-800 dark:text-rose-300">Atenção!</p>
+              <p className="text-xs text-rose-700 dark:text-rose-400 leading-relaxed">
+                Você deseja EXCLUIR permanentemente a recorrência <strong>{selectedContractToDelete?.service}</strong> do cliente <strong>{clients.find(c => c.id === selectedContractToDelete?.clientId)?.company || selectedContractToDelete?.name}</strong>?
+              </p>
+              <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-2 font-medium">
+                * Esta ação removerá apenas o contrato recorrente. O cliente e seu histórico financeiro serão mantidos.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button 
+              onClick={() => setIsContractDeleteModalOpen(false)}
+              className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button 
+              onClick={handleConfirmDeleteContract}
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200 dark:shadow-none disabled:opacity-50"
+            >
+              {loading ? 'Excluindo...' : 'Confirmar Exclusão'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Manual Contract Modal */}
+      <Modal 
+        isOpen={isContractModalOpen} 
+        onClose={() => setIsContractModalOpen(false)} 
+        title={contractFormData.id ? "Editar Contrato de Recorrência" : "Novo Contrato de Recorrência"}
+      >
+        <form onSubmit={handleSaveContract} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Selecionar Cliente</label>
+            <select 
+              required
+              disabled={!!contractFormData.id}
+              value={contractFormData.clientId}
+              onChange={(e) => {
+                const client = clients.find(c => c.id === e.target.value);
+                setContractFormData({ ...contractFormData, clientId: e.target.value, companyId: client?.companyId || '' });
+              }}
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+            >
+              <option value="">Selecione o cliente...</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.company} ({c.name})</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Serviço / Plano</label>
+            <input 
+              type="text" 
+              value={contractFormData.service}
+              onChange={(e) => setContractFormData({ ...contractFormData, service: e.target.value })}
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+              placeholder="Ex: Gestão de Tráfego VIP, Manutenção"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Valor Mensal (R$)</label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <input 
+                type="number" 
+                value={contractFormData.monthlyValue}
+                onChange={(e) => setContractFormData({ ...contractFormData, monthlyValue: Number(e.target.value) })}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+                placeholder="0.00"
+                required
+              />
+            </div>
+          </div>
+
+          <button 
+            type="submit"
+            disabled={loading}
+            className="w-full bg-emerald-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 dark:shadow-none disabled:opacity-50"
+          >
+            {loading ? 'Salvando...' : (contractFormData.id ? 'Salvar Alterações' : 'Ativar Recorrência')}
+          </button>
+        </form>
       </Modal>
     </div>
   );

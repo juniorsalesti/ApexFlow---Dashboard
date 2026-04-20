@@ -83,3 +83,16 @@ export interface Company {
   userId: string;
   createdAt: string;
 }
+
+export interface Contract {
+  id: string;
+  clientId: string;
+  companyId: string;
+  monthlyValue: number;
+  service: string;
+  status: 'active' | 'paused' | 'canceled';
+  startDate: string;
+  lastPaymentDate?: string;
+  nextPaymentDate?: string;
+  payments?: { [key: string]: boolean }; // e.g {"2024-04": true}
+}
