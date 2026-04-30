@@ -8,7 +8,8 @@ import {
   Settings, 
   LogOut,
   ChevronRight,
-  CheckCircle2
+  CheckCircle2,
+  Server
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
@@ -17,6 +18,7 @@ const menuItems = [
   { icon: DollarSign, label: 'Financeiro', id: 'financial' },
   { icon: Briefcase, label: 'Projetos', id: 'projects' },
   { icon: Users, label: 'Clientes', id: 'clients' },
+  { icon: Server, label: 'Hospedagem', id: 'hosting' },
   { icon: TrendingUp, label: 'Crescimento', id: 'growth' },
   { icon: Briefcase, label: 'Operacional', id: 'operational' },
   { icon: Target, label: 'Comercial', id: 'commercial' },

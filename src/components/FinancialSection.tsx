@@ -414,7 +414,7 @@ export function FinancialSection({ financial, allFinancial, clients, selectedMon
             <div>
               <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Categorias (Selecione uma ou mais)</label>
               <div className="grid grid-cols-2 gap-2 mt-2">
-                {['Tráfego Pago', 'Social Media', 'IA', 'Sites', 'Branding', 'Outros'].map(cat => (
+                {['Tráfego Pago', 'Social Media', 'IA', 'Sites', 'Branding', 'Hospedagem', 'Outros'].map(cat => (
                   <label key={cat} className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:border-violet-500 transition-colors">
                     <input 
                       type="checkbox" 

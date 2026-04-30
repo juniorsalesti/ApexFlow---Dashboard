@@ -6,18 +6,19 @@ import { Modal } from './ui/Modal';
 import { formatCurrency, cn } from '../lib/utils';
 import { addClient, updateClient, deleteClient, updateContract, deleteContract, addFinancialEntry, addContract, deleteFinancialEntry } from '../services/db';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle, DollarSign, Calendar, XCircle, Ban, CreditCard, Power } from 'lucide-react';
+import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle, DollarSign, Calendar, XCircle, Ban, CreditCard, Power, Server, Clock, TrendingUp } from 'lucide-react';
 
 interface ClientSectionProps {
   clients: any[];
   projects: any[];
   contracts: any[];
   financial: any[];
+  initialTab?: 'clients' | 'contracts' | 'hosting';
 }
 
-export function ClientSection({ clients, projects, contracts, financial }: ClientSectionProps) {
+export function ClientSection({ clients, projects, contracts, financial, initialTab }: ClientSectionProps) {
   const { selectedCompanyId, companies } = useCompany();
-  const [activeSubTab, setActiveSubTab] = useState<'clients' | 'contracts'>('clients');
+  const [activeSubTab, setActiveSubTab] = useState<'clients' | 'contracts' | 'hosting' | 'hosting_base'>(initialTab === 'hosting' ? 'hosting_base' : (initialTab || 'clients'));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -31,6 +32,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
     name: '',
     company: '',
     status: 'active',
+    category: (initialTab === 'hosting' ? 'hosting' : 'agency') as 'agency' | 'hosting',
     type: 'recurrent',
     companyId: '',
     recurringService: '',
@@ -41,6 +43,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
     id: '',
     clientId: '',
     service: '',
+    category: 'recurrence' as 'recurrence' | 'hosting',
     monthlyValue: 0,
     status: 'active' as const,
     companyId: ''
@@ -58,6 +61,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
         name: formData.name,
         company: formData.company,
         status: formData.status,
+        category: formData.category,
         type: formData.type
       }, companyId);
 
@@ -75,6 +79,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
         name: '', 
         company: '', 
         status: 'active', 
+        category: (initialTab === 'hosting' ? 'hosting' : 'agency') as 'agency' | 'hosting',
         type: 'recurrent', 
         companyId: '',
         recurringService: '',
@@ -95,7 +100,14 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
       await updateClient(selectedClient.id, formData);
       setIsEditModalOpen(false);
       setSelectedClient(null);
-      setFormData({ name: '', company: '', status: 'active', type: 'recurrent', companyId: '' });
+      setFormData({ 
+        name: '', 
+        company: '', 
+        status: 'active', 
+        category: (initialTab === 'hosting' ? 'hosting' : 'agency'),
+        type: 'recurrent', 
+        companyId: '' 
+      });
     } catch (error) {
       console.error(error);
     } finally {
@@ -146,14 +158,15 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
         // Marcar como pago
         await addFinancialEntry({
           type: 'income',
-          categories: [contract.service || 'Contrato Recorrente'],
-          category: contract.service || 'Contrato Recorrente',
+          categories: [(contract.category === 'hosting' ? 'Hospedagem' : 'Contrato Recorrente')],
+          category: contract.service || (contract.category === 'hosting' ? 'Hospedagem' : 'Contrato Recorrente'),
           value: Number(contract.monthlyValue),
           date: new Date().toISOString(),
-          description: `Recebimento Mensal: ${contract.service} - ${client?.company || 'Cliente'}`,
+          description: `Recebimento ${contract.category === 'hosting' ? 'Hospedagem' : 'Mensal'}: ${contract.service} - ${client?.company || 'Cliente'}`,
           companyId: contract.companyId,
           clientId: contract.clientId,
-          monthRef: currentMonth
+          monthRef: currentMonth,
+          source: contract.category === 'hosting' ? 'hosting' : 'recurrent'
         }, contract.companyId);
 
         const updatedPayments = { ...(contract.payments || {}), [currentMonth]: true };
@@ -231,6 +244,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
           service: contractFormData.service,
           monthlyValue: Number(contractFormData.monthlyValue),
           status: contractFormData.status,
+          category: contractFormData.category
         });
       } else {
         // Create new contract
@@ -239,10 +253,11 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
           service: contractFormData.service,
           monthlyValue: Number(contractFormData.monthlyValue),
           status: contractFormData.status,
+          category: contractFormData.category
         }, targetCompanyId);
       }
       setIsContractModalOpen(false);
-      setContractFormData({ id: '', clientId: '', service: '', monthlyValue: 0, status: 'active', companyId: '' });
+      setContractFormData({ id: '', clientId: '', service: '', category: 'recurrence', monthlyValue: 0, status: 'active', companyId: '' });
     } catch (error) {
       console.error(error);
     } finally {
@@ -251,10 +266,12 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
   };
 
   const openContractModal = (client?: any) => {
+    const isHosting = activeSubTab === 'hosting' || activeSubTab === 'hosting_base' || initialTab === 'hosting';
     setContractFormData({
       id: '',
       clientId: client?.id || '',
-      service: '',
+      service: isHosting ? 'Hospedagem' : '',
+      category: isHosting ? 'hosting' : 'recurrence',
       monthlyValue: 0,
       status: 'active',
       companyId: client?.companyId || selectedCompanyId || ''
@@ -267,6 +284,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
       id: contract.id,
       clientId: contract.clientId,
       service: contract.service,
+      category: contract.category || 'recurrence',
       monthlyValue: contract.monthlyValue,
       status: contract.status,
       companyId: contract.companyId
@@ -280,6 +298,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
       name: client.name,
       company: client.company,
       status: client.status,
+      category: client.category || 'agency',
       type: client.type || 'recurrent',
       companyId: client.companyId
     });
@@ -306,60 +325,142 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
     }
   };
 
+  // Filter data based on view
+  const currentCategory = activeSubTab === 'hosting' || activeSubTab === 'hosting_base' || initialTab === 'hosting' ? 'hosting' : 'agency';
+  const filteredClients = clients.filter(c => (!c.category && currentCategory === 'agency') || (c.category === currentCategory));
+
   // Calculate real metrics
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   
-  const newClientsCount = clients.filter(c => new Date(c.joinedAt) > thirtyDaysAgo).length;
-  const churnCount = clients.filter(c => c.status === 'inactive').length;
-  const churnRate = clients.length > 0 ? (churnCount / clients.length) * 100 : 0;
+  const newClientsCount = filteredClients.filter(c => new Date(c.joinedAt) > thirtyDaysAgo).length;
+  const churnCount = filteredClients.filter(c => c.status === 'inactive').length;
+  const churnRate = filteredClients.length > 0 ? (churnCount / filteredClients.length) * 100 : 0;
+
+  // Hosting Specific Metrics
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const hostingContracts = contracts.filter(c => c.category === 'hosting' && c.status === 'active');
+  const hostingTotalMonthly = hostingContracts.reduce((acc, curr) => acc + (curr.monthlyValue || 0), 0);
+  const hostingTotalPaid = hostingContracts
+    .filter(c => c.payments?.[currentMonth])
+    .reduce((acc, curr) => acc + (curr.monthlyValue || 0), 0);
+  const hostingPendingCount = hostingContracts.filter(c => !c.payments?.[currentMonth]).length;
 
   // Historical data for the chart
   const chartData = [
     { month: 'Jan', clients: 0 },
     { month: 'Fev', clients: 0 },
     { month: 'Mar', clients: 0 },
-    { month: 'Abr', clients: clients.length },
+    { month: 'Abr', clients: filteredClients.length },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white transition-colors">Gestão de Clientes & Recorrência</h3>
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mt-3 w-fit">
-            <button 
-              onClick={() => setActiveSubTab('clients')}
-              className={cn(
-                "px-4 py-1.5 text-xs font-bold rounded-md transition-all",
-                activeSubTab === 'clients' ? "bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              )}
-            >
-              Clientes
-            </button>
-            <button 
-              onClick={() => setActiveSubTab('contracts')}
-              className={cn(
-                "px-4 py-1.5 text-xs font-bold rounded-md transition-all",
-                activeSubTab === 'contracts' ? "bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              )}
-            >
-              Contratos & Recorrência
-            </button>
-          </div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white transition-colors">
+            {initialTab === 'hosting' ? 'Gestão de Hospedagens' : 'Gestão de Clientes & Recorrência'}
+          </h3>
+          {initialTab === 'hosting' ? (
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mt-3 w-fit">
+              <button 
+                onClick={() => setActiveSubTab('hosting_base')}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-bold rounded-md transition-all",
+                  activeSubTab === 'hosting_base' ? "bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                )}
+              >
+                Base de Hospedagem
+              </button>
+              <button 
+                onClick={() => setActiveSubTab('hosting')}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-bold rounded-md transition-all",
+                  activeSubTab === 'hosting' ? "bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                )}
+              >
+                Valores & Pagamentos
+              </button>
+            </div>
+          ) : !initialTab && (
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mt-3 w-fit">
+              <button 
+                onClick={() => setActiveSubTab('clients')}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-bold rounded-md transition-all",
+                  activeSubTab === 'clients' ? "bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                )}
+              >
+                Clientes
+              </button>
+              <button 
+                onClick={() => setActiveSubTab('contracts')}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-bold rounded-md transition-all",
+                  activeSubTab === 'contracts' ? "bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                )}
+              >
+                Contratos & Recorrência
+              </button>
+            </div>
+          )}
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setFormData({ 
+              ...formData, 
+              category: (initialTab === 'hosting' ? 'hosting' : 'agency') 
+            });
+            setIsModalOpen(true);
+          }}
           className="flex items-center justify-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none"
         >
           <Plus className="w-4 h-4" />
-          Novo Cliente
+          Novo {initialTab === 'hosting' ? 'Cliente de Hospedagem' : 'Cliente'}
         </button>
       </div>
 
-      {activeSubTab === 'clients' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card title="Base de Clientes" subtitle="Crescimento histórico" className="lg:col-span-2">
+      {activeSubTab === 'clients' || activeSubTab === 'hosting_base' ? (
+        <div className="space-y-6">
+          {activeSubTab === 'hosting_base' && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Clientes</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{filteredClients.length}</p>
+                  <Users className="w-5 h-5 text-violet-500" />
+                </div>
+              </div>
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Ativos</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{filteredClients.filter(c => c.status === 'active').length}</p>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                </div>
+              </div>
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Inativos</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-500">{filteredClients.filter(c => c.status === 'inactive').length}</p>
+                  <Clock className="w-5 h-5 text-amber-500" />
+                </div>
+              </div>
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Taxa de Churn</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{churnRate.toFixed(1)}%</p>
+                  <TrendingUp className="w-5 h-5 text-rose-500" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card 
+            title={activeSubTab === 'hosting_base' ? "Base de Hospedagem" : "Base de Clientes"} 
+            subtitle="Crescimento histórico" 
+            className="lg:col-span-2"
+          >
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
@@ -415,8 +516,8 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
 
           <Card title="Alertas de Risco" subtitle="Clientes com baixa saúde">
             <div className="space-y-4">
-              {clients.filter(c => c.status === 'risk' || c.status === 'attention').length > 0 ? (
-                clients.filter(c => c.status === 'risk' || c.status === 'attention').map(client => (
+              {filteredClients.filter(c => c.status === 'risk' || c.status === 'attention').length > 0 ? (
+                filteredClients.filter(c => c.status === 'risk' || c.status === 'attention').map(client => (
                   <div key={client.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 transition-colors">
                     <div>
                       <p className="text-sm font-semibold text-slate-900 dark:text-white">{client.name}</p>
@@ -443,13 +544,19 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                   <th className="px-4 py-3">Cliente</th>
                   <th className="px-4 py-3">Empresa</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Recorrência (Mês)</th>
-                  <th className="px-4 py-3">Faturamento Total</th>
+                  {activeSubTab !== 'hosting_base' ? (
+                    <>
+                      <th className="px-4 py-3">Recorrência (Mês)</th>
+                      <th className="px-4 py-3">Faturamento Total</th>
+                    </>
+                  ) : (
+                    <th className="px-4 py-3">Hospedagem</th>
+                  )}
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                {clients.map((client) => {
+                {filteredClients.map((client) => {
                     const clientProjects = projects.filter(p => p.clientId === client.id);
                     const clientFinancial = financial.filter(f => f.clientId === client.id && f.type === 'income');
                     const totalBilled = clientFinancial.reduce((acc, curr) => acc + (curr.value || 0), 0);
@@ -480,54 +587,89 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                             </Badge>
                           </button>
                         </td>
-                        <td className="px-4 py-4">
-                          {(() => {
-                            const contract = contracts.find(c => c.clientId === client.id);
-                            const currentMonth = new Date().toISOString().slice(0, 7);
-                            const isPaid = contract?.payments?.[currentMonth];
-                            
-                            if (!contract) return <span className="text-xs text-slate-300 dark:text-slate-700 italic">Sem contrato</span>;
-                            
-                            if (contract.status !== 'active') {
-                              return (
-                                <div className="flex flex-col gap-1">
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue)}/mês</span>
-                                  <Badge variant="attention" className="w-fit">Pausado</Badge>
-                                </div>
-                              );
-                            }
+                        {activeSubTab !== 'hosting_base' ? (
+                          <>
+                            <td className="px-4 py-4">
+                              {(() => {
+                                const contract = contracts.find(c => c.clientId === client.id);
+                                const currentMonth = new Date().toISOString().slice(0, 7);
+                                const isPaid = contract?.payments?.[currentMonth];
+                                
+                                if (!contract) return (
+                                  <button 
+                                    onClick={() => openContractModal(client)}
+                                    className="text-[10px] font-bold text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 flex items-center gap-1 transition-colors"
+                                  >
+                                    <Plus className="w-2 h-2" />
+                                    Ativar Recorrência
+                                  </button>
+                                );
+                                
+                                if (contract.status !== 'active') {
+                                  return (
+                                    <div className="flex flex-col gap-1">
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue)}/mês</span>
+                                      <Badge variant="attention" className="w-fit">Pausado</Badge>
+                                    </div>
+                                  );
+                                }
 
-                            return (
-                              <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue)}/mês</span>
-                                <button 
-                                  onClick={() => handleTogglePayment(contract)}
-                                  disabled={loading}
-                                  className="transition-all hover:scale-105 active:scale-95"
-                                  title={isPaid ? "Desmarcar recebimento" : "Marcar como recebido"}
-                                >
-                                  {isPaid ? (
-                                    <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                                      <CheckCircle2 className="w-3 h-3" />
-                                      <span className="text-[10px] font-bold">Pago</span>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-1 text-amber-600 hover:text-amber-700 font-bold">
-                                      <div className="w-3 h-3 rounded-full border border-amber-500"></div>
-                                      <span className="text-[10px]">Pendente</span>
-                                    </div>
-                                  )}
-                                </button>
+                                return (
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue)}/mês</span>
+                                    <button 
+                                      onClick={() => handleTogglePayment(contract)}
+                                      disabled={loading}
+                                      className="transition-all hover:scale-105 active:scale-95"
+                                      title={isPaid ? "Desmarcar recebimento" : "Marcar como recebido"}
+                                    >
+                                      {isPaid ? (
+                                        <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          <span className="text-[10px] font-bold">Pago</span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1 text-amber-600 hover:text-amber-700 font-bold">
+                                          <div className="w-3 h-3 rounded-full border border-amber-500"></div>
+                                          <span className="text-[10px]">Pendente</span>
+                                        </div>
+                                      )}
+                                    </button>
+                                  </div>
+                                );
+                              })()}
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(totalBilled)}</span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500">{clientFinancial.length} transações</span>
                               </div>
-                            );
-                          })()}
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(totalBilled)}</span>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500">{clientFinancial.length} transações</span>
-                          </div>
-                        </td>
+                            </td>
+                          </>
+                        ) : (
+                          <td className="px-4 py-4">
+                            {(() => {
+                              const contract = contracts.find(c => c.clientId === client.id && c.category === 'hosting');
+                              if (contract) {
+                                return (
+                                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    <span className="text-xs font-bold">Configurado</span>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <button 
+                                  onClick={() => openContractModal(client)}
+                                  className="flex items-center gap-1.5 px-3 py-1 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-lg text-xs font-bold hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  Ativar Hospedagem
+                                </button>
+                              );
+                            })()}
+                          </td>
+                        )}
                         <td className="px-4 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {(() => {
@@ -618,10 +760,10 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                     </tr>
                   );
                 })}
-                {clients.length === 0 && (
+                {filteredClients.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 text-sm italic">
-                      Nenhum cliente cadastrado ainda.
+                    <td colSpan={activeSubTab === 'hosting_base' ? 5 : 6} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 text-sm italic">
+                      Nenhum cliente cadastrado nesta categoria.
                     </td>
                   </tr>
                 )}
@@ -630,17 +772,59 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
           </div>
         </Card>
       </div>
+    </div>
       ) : (
-        <Card 
-          title="Contratos & Recorrência" 
-          subtitle="Gestão de pagamentos recorrentes e assinaturas"
+        <div className="space-y-6">
+          {activeSubTab === 'hosting' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Previsto (Mês)</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(hostingTotalMonthly)}</p>
+                  <div className="p-2 bg-violet-50 dark:bg-violet-900/20 rounded-lg">
+                    <Server className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] text-slate-500 font-medium">{hostingContracts.length} hospedagens ativas</p>
+              </div>
+              
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Recebido</p>
+                <div className="flex items-end justify-between">
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(hostingTotalPaid)}</p>
+                  <p className="text-sm font-bold text-slate-400 dark:text-slate-500">{Math.round((hostingTotalPaid / (hostingTotalMonthly || 1)) * 100)}%</p>
+                </div>
+                <div className="mt-3 w-full bg-slate-100 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-emerald-500 transition-all duration-1000" 
+                    style={{ width: `${(hostingTotalPaid / (hostingTotalMonthly || 1)) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Pendentes</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-500">{hostingPendingCount}</p>
+                  <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] text-slate-500 font-medium">Aguardando recebimento este mês</p>
+              </div>
+            </div>
+          )}
+
+          <Card 
+            title={activeSubTab === 'contracts' ? "Contratos & Recorrência" : "Valores de Hospedagem"} 
+            subtitle={activeSubTab === 'contracts' ? "Gestão de pagamentos recorrentes e assinaturas" : "Gestão de valores recorrentes de servidores e domínios"}
           action={
             <button 
               onClick={() => openContractModal()}
               className="flex items-center gap-2 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 dark:shadow-none"
             >
               <Plus className="w-3 h-3" />
-              Novo Contrato
+              {activeSubTab === 'contracts' ? "Novo Contrato" : "Nova Hospedagem"}
             </button>
           }
         >
@@ -649,7 +833,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
               <thead>
                 <tr className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase border-b border-slate-100 dark:border-slate-800">
                   <th className="px-4 py-3">Cliente / Empresa</th>
-                  <th className="px-4 py-3">Serviço</th>
+                  <th className="px-4 py-3">{activeSubTab === 'contracts' ? "Serviço" : "Plano de Hospedagem"}</th>
                   <th className="px-4 py-3">Valor Mensal</th>
                   <th className="px-4 py-3">Status Pagamento</th>
                   <th className="px-4 py-3">Status</th>
@@ -657,7 +841,14 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                {contracts.sort((a, b) => (a.status === 'cancelled' || a.status === 'canceled' ? 1 : -1)).map((contract) => {
+                {contracts
+                  .filter(c => {
+                    const client = clients.find(cl => cl.id === c.clientId);
+                    const isHostingTab = activeSubTab === 'hosting' || activeSubTab === 'hosting_base' || initialTab === 'hosting';
+                    const categoryMatch = isHostingTab ? c.category === 'hosting' : (!c.category || c.category === 'recurrence');
+                    return categoryMatch;
+                  })
+                  .sort((a, b) => (a.status === 'cancelled' || a.status === 'canceled' ? 1 : -1)).map((contract) => {
                   const client = clients.find(c => c.id === contract.clientId);
                   const currentMonth = new Date().toISOString().slice(0, 7);
                   const isPaid = contract.payments?.[currentMonth];
@@ -759,10 +950,13 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
                     </tr>
                   );
                 })}
-                {contracts.length === 0 && (
+                {contracts.filter(c => {
+                  const isHostingTab = activeSubTab === 'hosting' || activeSubTab === 'hosting_base' || initialTab === 'hosting';
+                  return isHostingTab ? c.category === 'hosting' : (!c.category || c.category === 'recurrence');
+                }).length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 text-sm italic">
-                      Nenhum contrato recorrente registrado.
+                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 text-sm italic">
+                      Nenhum registro encontrado nesta categoria.
                     </td>
                   </tr>
                 )}
@@ -770,6 +964,7 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
             </table>
           </div>
         </Card>
+      </div>
       )}
 
       <Modal 
@@ -795,6 +990,18 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
               <p className="text-[10px] text-slate-400 mt-1">O cliente deve estar vinculado a uma de suas empresas.</p>
             </div>
           )}
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Tipo de Cliente</label>
+            <select 
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+            >
+              <option value="agency">Agência</option>
+              <option value="hosting">Hospedagem</option>
+            </select>
+          </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Nome do Contato</label>
@@ -1116,9 +1323,21 @@ export function ClientSection({ clients, projects, contracts, financial }: Clien
               className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
             >
               <option value="">Selecione o cliente...</option>
-              {clients.map(c => (
+              {filteredClients.map(c => (
                 <option key={c.id} value={c.id}>{c.company} ({c.name})</option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Categoria do Contrato</label>
+            <select 
+              value={contractFormData.category}
+              onChange={(e) => setContractFormData({ ...contractFormData, category: e.target.value as any })}
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+            >
+              <option value="recurrence">Recorrência Geral</option>
+              <option value="hosting">Hospedagem</option>
             </select>
           </div>
 

@@ -167,6 +167,7 @@ function DashboardContent() {
       case 'overview': return <OverviewSection clients={clients} projects={filteredProjects} contracts={filteredContracts} financial={filteredFinancial} allFinancial={financial} selectedMonth={selectedMonth} selectedYear={selectedYear} period={period} />;
       case 'financial': return <FinancialSection financial={filteredFinancial} allFinancial={financial} clients={clients} selectedMonth={selectedMonth} selectedYear={selectedYear} period={period} />;
       case 'clients': return <ClientSection clients={clients} projects={projects} contracts={contracts} financial={financial} />;
+      case 'hosting': return <ClientSection clients={clients} projects={projects} contracts={contracts} financial={financial} initialTab="hosting" />;
       case 'growth': return <GrowthSection clients={clients} projects={projects} financial={filteredFinancial} allFinancial={financial} />;
       case 'operational': return <OperationalSection projects={filteredProjects} />;
       case 'commercial': return <CommercialSection commercial={commercial} />;
@@ -183,6 +184,7 @@ function DashboardContent() {
       case 'overview': return 'Visão Geral';
       case 'financial': return 'Financeiro';
       case 'clients': return 'Gestão de Clientes';
+      case 'hosting': return 'Gestão de Hospedagem';
       case 'growth': return 'Crescimento & Métricas';
       case 'operational': return 'Operacional & Projetos';
       case 'commercial': return 'Comercial & Vendas';
