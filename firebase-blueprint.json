@@ -40,7 +40,7 @@
         "clientId": { "type": "string", "description": "Reference to the client" },
         "companyId": { "type": "string", "description": "Reference to the company" },
         "name": { "type": "string", "description": "Project name" },
-        "type": { "type": "string", "enum": ["Site", "Landing Page", "Branding", "Automação"], "description": "Project type" },
+        "type": { "type": "string", "enum": ["Site", "Landing Page", "Branding", "Automação", "GMN Cadastro", "GMN Atualização"], "description": "Project type" },
         "value": { "type": "number", "description": "Total project value" },
         "status": { "type": "string", "enum": ["negotiation", "execution", "delivered", "delayed"], "description": "Project status" },
         "startDate": { "type": "string", "format": "date-time", "description": "Project start date" },

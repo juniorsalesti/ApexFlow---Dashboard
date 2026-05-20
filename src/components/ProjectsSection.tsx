@@ -45,6 +45,8 @@ const PROJECT_TYPE_COLORS: Record<string, string> = {
   'Landing Page': '#a78bfa',
   'Branding': '#c4b5fd',
   'Automação': '#ddd6fe',
+  'GMN Cadastro': '#22d3ee',
+  'GMN Atualização': '#06b6d4',
 };
 
 interface ProjectsSectionProps {
@@ -186,7 +188,7 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
       if (curr.type === 'income') {
         const categories = curr.categories || (curr.category ? [curr.category] : []);
         const projectCategories = categories.filter((cat: string) => 
-          ['Sites', 'Landing Page', 'Branding', 'Automação'].includes(cat)
+          ['Sites', 'Landing Page', 'Branding', 'Automação', 'GMN Cadastro', 'GMN Atualização'].includes(cat)
         );
         
         if (projectCategories.length > 0) {
@@ -239,7 +241,7 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
           if (entryDate.getMonth() === m && entryDate.getFullYear() === y && curr.type === 'income') {
             const categories = curr.categories || (curr.category ? [curr.category] : []);
             const projectCategories = categories.filter((cat: string) => 
-              ['Sites', 'Landing Page', 'Branding', 'Automação'].includes(cat)
+              ['Sites', 'Landing Page', 'Branding', 'Automação', 'GMN Cadastro', 'GMN Atualização'].includes(cat)
             );
             if (projectCategories.length > 0) {
               const portion = projectCategories.length / categories.length;
@@ -487,6 +489,8 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
                 <option value="Landing Page">Landing Page</option>
                 <option value="Branding">Branding</option>
                 <option value="Automação">Automação</option>
+                <option value="GMN Cadastro">GMN Cadastro</option>
+                <option value="GMN Atualização">GMN Atualização</option>
               </select>
             </div>
             <div>

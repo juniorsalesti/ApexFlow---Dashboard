@@ -541,6 +541,8 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
                     <option value="Landing Page">Landing Page</option>
                     <option value="Branding">Branding</option>
                     <option value="Automação">Automação</option>
+                    <option value="GMN Cadastro">GMN Cadastro</option>
+                    <option value="GMN Atualização">GMN Atualização</option>
                   </select>
                 </div>
               </div>
