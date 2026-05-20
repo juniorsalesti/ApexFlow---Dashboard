@@ -155,6 +155,14 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
     projectType: 'Site'
   });
 
+  const handleDeleteLead = async (leadId: string) => {
+    try {
+      await deleteLead(leadId);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -314,6 +322,7 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        autoScroll={true}
       >
         <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 min-h-[600px] snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
           {COLUMNS.map(column => (
@@ -322,6 +331,8 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
               column={column} 
               leads={leads.filter(l => l.status === column.id)} 
               onEdit={handleEditLead}
+              onDelete={handleDeleteLead}
+              onUpdateStatus={handleUpdateStatus}
             />
           ))}
         </div>
@@ -415,6 +426,20 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
               />
             </div>
             <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Status do Lead</label>
+              <select 
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+              >
+                {COLUMNS.map(col => (
+                  <option key={col.id} value={col.id}>{col.title}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
               <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Valor Potencial</label>
               <input 
                 type="number" 
@@ -423,15 +448,15 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
                 className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
               />
             </div>
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Responsável</label>
-            <input 
-              type="text" 
-              value={formData.owner}
-              onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
-            />
+            <div>
+              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Responsável</label>
+              <input 
+                type="text" 
+                value={formData.owner}
+                onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white"
+              />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Observações</label>
@@ -441,13 +466,27 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
               className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-violet-500 transition-colors text-sm dark:text-white min-h-[80px]"
             />
           </div>
-          <button 
-            type="submit"
-            disabled={loading}
-            className="w-full bg-violet-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-50"
-          >
-            {loading ? 'Salvando...' : (selectedLead ? 'Atualizar Lead' : 'Criar Lead')}
-          </button>
+          <div className="flex gap-3">
+            {selectedLead && (
+              <button 
+                type="button"
+                onClick={() => {
+                  handleDeleteLead(selectedLead.id);
+                  setIsModalOpen(false);
+                }}
+                className="flex-1 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 py-2 rounded-lg font-bold text-sm hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors border border-rose-200 dark:border-rose-900/30"
+              >
+                Excluir Lead
+              </button>
+            )}
+            <button 
+              type="submit"
+              disabled={loading}
+              className={`bg-violet-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-50 ${selectedLead ? 'flex-[2]' : 'w-full'}`}
+            >
+              {loading ? 'Salvando...' : (selectedLead ? 'Atualizar Lead' : 'Criar Lead')}
+            </button>
+          </div>
         </form>
       </Modal>
 
@@ -567,7 +606,14 @@ export function CRMSection({ leads, clients, projects, contracts }: CRMSectionPr
   );
 }
 
-function KanbanColumn({ column, leads, onEdit }: { column: any, leads: any[], onEdit: (lead: any) => void, key?: any }) {
+function KanbanColumn({ column, leads, onEdit, onDelete, onUpdateStatus }: { 
+  column: any, 
+  leads: any[], 
+  onEdit: (lead: any) => void, 
+  onDelete: (id: string) => void,
+  onUpdateStatus: (id: string, status: string) => void,
+  key?: any 
+}) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -587,7 +633,13 @@ function KanbanColumn({ column, leads, onEdit }: { column: any, leads: any[], on
           className={`flex-1 space-y-3 p-1 rounded-xl min-h-[500px] transition-colors ${isOver ? 'bg-violet-50/50 dark:bg-violet-900/10' : 'bg-slate-50/50 dark:bg-slate-900/20'}`}
         >
           {leads.map(lead => (
-            <LeadCard key={lead.id} lead={lead} onEdit={onEdit} />
+            <LeadCard 
+              key={lead.id} 
+              lead={lead} 
+              onEdit={onEdit} 
+              onDelete={onDelete}
+              onUpdateStatus={onUpdateStatus}
+            />
           ))}
           {leads.length === 0 && (
             <div className="py-8 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl">
@@ -600,7 +652,20 @@ function KanbanColumn({ column, leads, onEdit }: { column: any, leads: any[], on
   );
 }
 
-function LeadCard({ lead, onEdit, isOverlay }: { lead: any, onEdit?: (lead: any) => void, isOverlay?: boolean, key?: any }) {
+function LeadCard({ 
+  lead, 
+  onEdit, 
+  onDelete, 
+  onUpdateStatus,
+  isOverlay 
+}: { 
+  lead: any, 
+  onEdit?: (lead: any) => void, 
+  onDelete?: (id: string) => void,
+  onUpdateStatus?: (id: string, status: string) => void,
+  isOverlay?: boolean, 
+  key?: any 
+}) {
   const {
     attributes,
     listeners,
@@ -630,12 +695,29 @@ function LeadCard({ lead, onEdit, isOverlay }: { lead: any, onEdit?: (lead: any)
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{lead.name}</p>
         </div>
         {!isOverlay && (
-          <button 
-            onClick={() => onEdit?.(lead)}
-            className="p-1.5 text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/50 rounded-lg transition-colors"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(lead);
+              }}
+              className="p-1.5 text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/50 rounded-lg transition-colors"
+              title="Editar Lead"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onDelete?.(lead.id);
+              }}
+              className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/50 rounded-lg transition-colors"
+              title="Excluir Lead"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -652,17 +734,43 @@ function LeadCard({ lead, onEdit, isOverlay }: { lead: any, onEdit?: (lead: any)
             {lead.source || 'Origem não informada'}
           </div>
         </div>
+      </div>
 
-        <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800">
-          <div className="flex -space-x-2">
+      <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800">
+        <div className="flex items-center gap-2">
+          {!isOverlay && lead.status !== 'won' && lead.status !== 'lost' && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateStatus?.(lead.id, 'won');
+                }}
+                className="p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-md transition-colors"
+                title="Marcar como Ganho"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateStatus?.(lead.id, 'lost');
+                }}
+                className="p-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-md transition-colors"
+                title="Marcar como Perdido"
+              >
+                <XCircle className="w-3 h-3" />
+              </button>
+            </>
+          )}
+          <div className="flex -space-x-2 ml-1">
             <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/30 border-2 border-white dark:border-slate-900 flex items-center justify-center">
               <span className="text-[8px] font-bold text-violet-600 dark:text-violet-400">{lead.owner?.charAt(0) || 'U'}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {lead.phone && <Phone className="w-3 h-3 text-slate-300 dark:text-slate-600" />}
-            {lead.email && <Mail className="w-3 h-3 text-slate-300 dark:text-slate-600" />}
-          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {lead.phone && <Phone className="w-3 h-3 text-slate-300 dark:text-slate-600" />}
+          {lead.email && <Mail className="w-3 h-3 text-slate-300 dark:text-slate-600" />}
         </div>
       </div>
     </div>
