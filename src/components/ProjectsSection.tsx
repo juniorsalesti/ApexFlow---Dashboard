@@ -26,6 +26,7 @@ import { StatCard } from './ui/StatCard';
 import { Badge } from './ui/Badge';
 import { Modal } from './ui/Modal';
 import { formatCurrency, formatPercent, cn } from '../lib/utils';
+import { usePrivacy } from '../contexts/PrivacyContext';
 import { addProject, addTask, updateProject, deleteProject } from '../services/db';
 import { 
   ResponsiveContainer, 
@@ -56,6 +57,7 @@ interface ProjectsSectionProps {
 }
 
 export function ProjectsSection({ projects, financial, allFinancial }: ProjectsSectionProps) {
+  const { hideValues } = usePrivacy();
   const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -311,9 +313,9 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-slate-800" />
                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(v) => `R$ ${v/1000}k`} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(v) => hideValues ? '***' : `R$ ${v/1000}k`} />
                 <Tooltip 
-                  formatter={(v: number) => formatCurrency(v)}
+                  formatter={(v: number) => formatCurrency(v, hideValues)}
                   contentStyle={{ 
                     backgroundColor: 'rgba(15, 23, 42, 0.9)', 
                     border: 'none', 
@@ -404,7 +406,7 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-3">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(project.value)}</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(project.value, hideValues)}</span>
                       <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
                         <Calendar className="w-3 h-3" />
                         {project.deadline ? new Date(project.deadline).toLocaleDateString('pt-BR') : 'Sem prazo'}
@@ -583,7 +585,7 @@ export function ProjectsSection({ projects, financial, allFinancial }: ProjectsS
               </div>
               <div className="text-right">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Valor do Projeto</p>
-                <p className="text-2xl font-bold text-violet-600">{formatCurrency(selectedProject.value)}</p>
+                <p className="text-2xl font-bold text-violet-600">{formatCurrency(selectedProject.value, hideValues)}</p>
               </div>
             </div>
 

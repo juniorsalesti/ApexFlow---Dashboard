@@ -27,6 +27,7 @@ import { Modal } from './ui/Modal';
 import { Badge } from './ui/Badge';
 import { StatCard } from './ui/StatCard';
 import { formatCurrency, formatPercent } from '../lib/utils';
+import { usePrivacy } from '../contexts/PrivacyContext';
 import { 
   addLead, 
   updateLead, 
@@ -666,6 +667,7 @@ function LeadCard({
   isOverlay?: boolean, 
   key?: any 
 }) {
+  const { hideValues } = usePrivacy();
   const {
     attributes,
     listeners,
@@ -726,7 +728,7 @@ function LeadCard({
           {lead.value > 0 && (
             <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-slate-100">
               <DollarSign className="w-3 h-3 text-emerald-500" />
-              {formatCurrency(lead.value)}
+              {formatCurrency(lead.value, hideValues)}
             </div>
           )}
           <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">

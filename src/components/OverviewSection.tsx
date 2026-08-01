@@ -3,6 +3,7 @@ import { DollarSign, Users, TrendingUp, CreditCard, Briefcase, PieChart } from '
 import { StatCard } from './ui/StatCard';
 import { Card } from './ui/Card';
 import { formatPercent, formatCurrency } from '../lib/utils';
+import { usePrivacy } from '../contexts/PrivacyContext';
 
 interface OverviewSectionProps {
   clients: any[];
@@ -25,6 +26,8 @@ export function OverviewSection({
   selectedYear,
   period
 }: OverviewSectionProps) {
+  const { hideValues } = usePrivacy();
+
   const metrics = useMemo(() => {
     const now = new Date();
     let targetMonth = selectedMonth;
@@ -217,7 +220,7 @@ export function OverviewSection({
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(item.revenue)}</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(item.revenue, hideValues)}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400">{formatPercent((item.revenue / metrics.totalRevenue) * 100)} do total</p>
                   </div>
                 </div>
@@ -264,7 +267,7 @@ export function OverviewSection({
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ticket Médio / Cliente</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(metrics.averageTicket)}</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(metrics.averageTicket, hideValues)}</p>
               </div>
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Clientes Pagantes</p>

@@ -1,6 +1,7 @@
-import { Bell, Search, User, Sun, Moon, Menu } from 'lucide-react';
+import { Bell, Search, User, Sun, Moon, Menu, Eye, EyeOff } from 'lucide-react';
 import { CompanySelector } from '../CompanySelector';
 import { useTheme } from '../../contexts/ThemeContext';
+import { usePrivacy } from '../../contexts/PrivacyContext';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -8,6 +9,7 @@ interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
+  const { hideValues, toggleHideValues } = usePrivacy();
 
   return (
     <header className="h-16 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 transition-colors duration-300">
@@ -31,7 +33,20 @@ export function Header({ onMenuClick }: HeaderProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-3">
+        <button 
+          onClick={toggleHideValues}
+          className={`p-2 rounded-lg transition-all flex items-center gap-1.5 ${
+            hideValues 
+              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium' 
+              : 'text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-slate-50 dark:hover:bg-slate-900'
+          }`}
+          title={hideValues ? 'Mostrar valores financeiros' : 'Ocultar valores financeiros'}
+        >
+          {hideValues ? <EyeOff className="w-5 h-5 text-amber-600 dark:text-amber-400" /> : <Eye className="w-5 h-5" />}
+          {hideValues && <span className="text-xs font-semibold hidden sm:inline">Valores Ocultos</span>}
+        </button>
+
         <button 
           onClick={toggleTheme}
           className="p-2 text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-full transition-all"

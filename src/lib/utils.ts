@@ -5,7 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(value: number) {
+export function formatCurrency(value: number, hideValues?: boolean) {
+  if (hideValues) {
+    return 'R$ ••••••';
+  }
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -15,7 +18,7 @@ export function formatCurrency(value: number) {
 export function formatPercent(value: number) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'percent',
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value / 100);
 }

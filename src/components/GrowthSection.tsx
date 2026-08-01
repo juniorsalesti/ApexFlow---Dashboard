@@ -1,5 +1,6 @@
 import { Card } from './ui/Card';
 import { formatCurrency } from '../lib/utils';
+import { usePrivacy } from '../contexts/PrivacyContext';
 import { TrendingUp, Target, Users, Zap } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useMemo } from 'react';
@@ -12,6 +13,8 @@ interface GrowthSectionProps {
 }
 
 export function GrowthSection({ clients, projects, financial, allFinancial }: GrowthSectionProps) {
+  const { hideValues } = usePrivacy();
+
   const currentRevenue = financial
     .filter(f => f.type === 'income')
     .reduce((acc, curr) => acc + curr.value, 0);
@@ -48,7 +51,7 @@ export function GrowthSection({ clients, projects, financial, allFinancial }: Gr
   // Mock CAC for now, but LTV is based on real ticket
   const cac = 0;
   const ltv = averageTicket * 12; // Assuming 12 months retention
-  const ltvCacRatio = cac > 0 ? (ltv / cac).toFixed(1) : '0';
+  const ltvCacRatio = cac > 0 ? (ltv / cac).toFixed(2) : '0';
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -58,7 +61,7 @@ export function GrowthSection({ clients, projects, financial, allFinancial }: Gr
             <TrendingUp className="w-6 h-6 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white transition-colors">{formatCurrency(ltv)}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white transition-colors">{formatCurrency(ltv, hideValues)}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500 font-medium transition-colors">Baseado no ticket médio</p>
           </div>
         </div>
@@ -70,7 +73,7 @@ export function GrowthSection({ clients, projects, financial, allFinancial }: Gr
             <Target className="w-6 h-6 text-rose-600 dark:text-rose-400" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white transition-colors">{formatCurrency(cac)}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white transition-colors">{formatCurrency(cac, hideValues)}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500 font-medium transition-colors">Sem dados históricos</p>
           </div>
         </div>
@@ -94,7 +97,7 @@ export function GrowthSection({ clients, projects, financial, allFinancial }: Gr
             <Users className="w-6 h-6 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white transition-colors">{formatCurrency(averageTicket)}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white transition-colors">{formatCurrency(averageTicket, hideValues)}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500 font-medium transition-colors">Média por cliente ativo</p>
           </div>
         </div>
@@ -107,22 +110,22 @@ export function GrowthSection({ clients, projects, financial, allFinancial }: Gr
               <TrendingUp className="w-24 h-24" />
             </div>
             <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Mês Atual (Realizado)</p>
-            <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue)}</h4>
+            <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue, hideValues)}</h4>
             <p className={cn(
               "text-xs mt-2 font-semibold",
               growth >= 0 ? "text-emerald-500" : "text-rose-500"
             )}>
-              {growth >= 0 ? '+' : ''}{growth.toFixed(1)}% vs mês anterior
+              {growth >= 0 ? '+' : ''}{growth.toFixed(2)}% vs mês anterior
             </p>
           </div>
           <div className="p-6 rounded-2xl bg-slate-800 dark:bg-slate-900 text-white relative overflow-hidden transition-colors">
             <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Próximo Mês (Projetado)</p>
-            <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue * (1 + (growth > 0 ? growth / 100 : 0.05)))}</h4>
+            <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue * (1 + (growth > 0 ? growth / 100 : 0.05)), hideValues)}</h4>
             <p className="text-slate-400 dark:text-slate-500 text-xs mt-2 font-semibold">Estimativa baseada em tendência</p>
           </div>
           <div className="p-6 rounded-2xl bg-slate-700 dark:bg-slate-950 text-white relative overflow-hidden transition-colors">
             <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Meta Trimestral</p>
-            <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue * 3.5)}</h4>
+            <h4 className="text-3xl font-bold mt-2">{formatCurrency(currentRevenue * 3.5, hideValues)}</h4>
             <p className="text-slate-400 dark:text-slate-500 text-xs mt-2 font-semibold">Objetivo de escala</p>
           </div>
         </div>

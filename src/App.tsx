@@ -25,6 +25,7 @@ import { SettingsSection } from './components/SettingsSection';
 import { Auth } from './components/Auth';
 import { CompanyProvider, useCompany } from './contexts/CompanyContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { PrivacyProvider } from './contexts/PrivacyContext';
 import { Calendar, Filter, Download, ChevronDown, TrendingUp, Users, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Card } from './components/ui/Card';
@@ -112,15 +113,17 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <ErrorBoundary>
-        {user ? (
-          <CompanyProvider>
-            <DashboardContent />
-          </CompanyProvider>
-        ) : (
-          <Auth />
-        )}
-      </ErrorBoundary>
+      <PrivacyProvider>
+        <ErrorBoundary>
+          {user ? (
+            <CompanyProvider>
+              <DashboardContent />
+            </CompanyProvider>
+          ) : (
+            <Auth />
+          )}
+        </ErrorBoundary>
+      </PrivacyProvider>
     </ThemeProvider>
   );
 }

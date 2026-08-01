@@ -4,6 +4,7 @@ import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Modal } from './ui/Modal';
 import { formatCurrency, cn } from '../lib/utils';
+import { usePrivacy } from '../contexts/PrivacyContext';
 import { addClient, updateClient, deleteClient, updateContract, deleteContract, addFinancialEntry, addContract, deleteFinancialEntry } from '../services/db';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle, DollarSign, Calendar, XCircle, Ban, CreditCard, Power, Server, Clock, TrendingUp } from 'lucide-react';
@@ -17,6 +18,7 @@ interface ClientSectionProps {
 }
 
 export function ClientSection({ clients, projects, contracts, financial, initialTab }: ClientSectionProps) {
+  const { hideValues } = usePrivacy();
   const { selectedCompanyId, companies } = useCompany();
   const [activeSubTab, setActiveSubTab] = useState<'clients' | 'contracts' | 'hosting' | 'hosting_base'>(initialTab === 'hosting' ? 'hosting_base' : (initialTab || 'clients'));
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -448,7 +450,7 @@ export function ClientSection({ clients, projects, contracts, financial, initial
               <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
                 <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Taxa de Churn</p>
                 <div className="flex items-center justify-between">
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{churnRate.toFixed(1)}%</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{churnRate.toFixed(2)}%</p>
                   <TrendingUp className="w-5 h-5 text-rose-500" />
                 </div>
               </div>
@@ -510,7 +512,7 @@ export function ClientSection({ clients, projects, contracts, financial, initial
                 <span className="text-xs font-bold uppercase">Churn</span>
               </div>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">{churnCount}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Taxa de {churnRate.toFixed(0)}%</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Taxa de {churnRate.toFixed(2)}%</p>
             </div>
           </div>
 
@@ -608,7 +610,7 @@ export function ClientSection({ clients, projects, contracts, financial, initial
                                 if (contract.status !== 'active') {
                                   return (
                                     <div className="flex flex-col gap-1">
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue)}/mês</span>
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue, hideValues)}/mês</span>
                                       <Badge variant="attention" className="w-fit">Pausado</Badge>
                                     </div>
                                   );
@@ -616,7 +618,7 @@ export function ClientSection({ clients, projects, contracts, financial, initial
 
                                 return (
                                   <div className="flex flex-col gap-1">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue)}/mês</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{formatCurrency(contract.monthlyValue, hideValues)}/mês</span>
                                     <button 
                                       onClick={() => handleTogglePayment(contract)}
                                       disabled={loading}
@@ -641,7 +643,7 @@ export function ClientSection({ clients, projects, contracts, financial, initial
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex flex-col">
-                                <span className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(totalBilled)}</span>
+                                <span className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(totalBilled, hideValues)}</span>
                                 <span className="text-[10px] text-slate-400 dark:text-slate-500">{clientFinancial.length} transações</span>
                               </div>
                             </td>
@@ -780,7 +782,7 @@ export function ClientSection({ clients, projects, contracts, financial, initial
               <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
                 <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Previsto (Mês)</p>
                 <div className="flex items-center justify-between">
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(hostingTotalMonthly)}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(hostingTotalMonthly, hideValues)}</p>
                   <div className="p-2 bg-violet-50 dark:bg-violet-900/20 rounded-lg">
                     <Server className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                   </div>
@@ -791,8 +793,8 @@ export function ClientSection({ clients, projects, contracts, financial, initial
               <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
                 <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Recebido</p>
                 <div className="flex items-end justify-between">
-                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(hostingTotalPaid)}</p>
-                  <p className="text-sm font-bold text-slate-400 dark:text-slate-500">{Math.round((hostingTotalPaid / (hostingTotalMonthly || 1)) * 100)}%</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(hostingTotalPaid, hideValues)}</p>
+                  <p className="text-sm font-bold text-slate-400 dark:text-slate-500">{((hostingTotalPaid / (hostingTotalMonthly || 1)) * 100).toFixed(2)}%</p>
                 </div>
                 <div className="mt-3 w-full bg-slate-100 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
                   <div 
@@ -871,7 +873,7 @@ export function ClientSection({ clients, projects, contracts, financial, initial
                         </div>
                       </td>
                       <td className="px-4 py-4 text-sm font-bold text-slate-900 dark:text-white">
-                        {formatCurrency(contract.monthlyValue)}
+                        {formatCurrency(contract.monthlyValue, hideValues)}
                       </td>
                       <td className="px-4 py-4">
                         {contract.status === 'active' ? (
@@ -1181,7 +1183,7 @@ export function ClientSection({ clients, projects, contracts, financial, initial
             <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 rounded-xl">
               <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Total Pago</p>
               <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
-                {formatCurrency(financial.filter(f => f.clientId === selectedClient?.id && f.type === 'income').reduce((acc, curr) => acc + curr.value, 0))}
+                {formatCurrency(financial.filter(f => f.clientId === selectedClient?.id && f.type === 'income').reduce((acc, curr) => acc + curr.value, 0), hideValues)}
               </p>
             </div>
             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl">
@@ -1208,7 +1210,7 @@ export function ClientSection({ clients, projects, contracts, financial, initial
                   </div>
                 </div>
                 <p className={`text-sm font-bold ${entry.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {entry.type === 'income' ? '+' : '-'}{formatCurrency(entry.value)}
+                  {entry.type === 'income' ? '+' : '-'}{formatCurrency(entry.value, hideValues)}
                 </p>
               </div>
             ))}

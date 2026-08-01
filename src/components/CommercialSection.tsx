@@ -118,7 +118,7 @@ export function CommercialSection({ commercial }: CommercialSectionProps) {
                     {i > 0 && (
                       <div className="absolute inset-y-0 left-0 flex items-center pl-3">
                         <span className="text-[10px] font-bold text-white drop-shadow-sm">
-                          {((step.value / (funnelData[i-1].value || 1)) * 100).toFixed(0)}% conv.
+                          {((step.value / (funnelData[i-1].value || 1)) * 100).toFixed(2)}% conv.
                         </span>
                       </div>
                     )}

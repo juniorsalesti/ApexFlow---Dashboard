@@ -1,4 +1,5 @@
-import { cn, formatCurrency, formatPercent } from '@/src/lib/utils';
+import { cn, formatCurrency, formatPercent } from '../../lib/utils';
+import { usePrivacy } from '../../contexts/PrivacyContext';
 import { LucideIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -13,8 +14,10 @@ interface StatCardProps {
 }
 
 export function StatCard({ title, value, icon: Icon, trend, isCurrency, isPercent, className }: StatCardProps) {
+  const { hideValues } = usePrivacy();
+
   const formattedValue = isCurrency 
-    ? formatCurrency(Number(value)) 
+    ? formatCurrency(Number(value), hideValues) 
     : isPercent 
       ? formatPercent(Number(value)) 
       : value;
@@ -34,7 +37,7 @@ export function StatCard({ title, value, icon: Icon, trend, isCurrency, isPercen
             'text-xs font-medium px-2 py-1 rounded-full',
             trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
           )}>
-            {trend >= 0 ? '+' : ''}{trend}%
+            {trend >= 0 ? '+' : ''}{Number(trend).toFixed(2)}%
           </span>
         )}
       </div>

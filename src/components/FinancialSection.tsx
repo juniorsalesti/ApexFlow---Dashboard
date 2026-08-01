@@ -20,6 +20,7 @@ import { Card } from './ui/Card';
 import { Modal } from './ui/Modal';
 import { Badge } from './ui/Badge';
 import { formatCurrency, cn } from '../lib/utils';
+import { usePrivacy } from '../contexts/PrivacyContext';
 import { addFinancialEntry, updateFinancialEntry, deleteFinancialEntry } from '../services/db';
 
 interface FinancialSectionProps {
@@ -32,6 +33,7 @@ interface FinancialSectionProps {
 }
 
 export function FinancialSection({ financial, allFinancial, clients, selectedMonth, selectedYear, period }: FinancialSectionProps) {
+  const { hideValues } = usePrivacy();
   const { selectedCompanyId, companies } = useCompany();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -227,10 +229,10 @@ export function FinancialSection({ financial, allFinancial, clients, selectedMon
                   axisLine={false} 
                   tickLine={false} 
                   tick={{ fill: '#64748b', fontSize: 12 }}
-                  tickFormatter={(value) => `R$ ${value / 1000}k`}
+                  tickFormatter={(value) => hideValues ? '***' : `R$ ${value / 1000}k`}
                 />
                 <Tooltip 
-                  formatter={(value: number) => [formatCurrency(value), 'Faturamento']}
+                  formatter={(value: number) => [formatCurrency(value, hideValues), 'Faturamento']}
                   contentStyle={{ 
                     backgroundColor: 'rgba(15, 23, 42, 0.9)', 
                     border: 'none', 
@@ -337,7 +339,7 @@ export function FinancialSection({ financial, allFinancial, clients, selectedMon
                       "px-4 py-4 text-sm font-bold",
                       entry.type === 'income' ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                     )}>
-                      {entry.type === 'income' ? '+' : '-'} {formatCurrency(entry.value)}
+                      {entry.type === 'income' ? '+' : '-'} {formatCurrency(entry.value, hideValues)}
                     </td>
                     <td className="px-4 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
