@@ -122,9 +122,102 @@
         "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "Task priority" },
         "companyId": { "type": "string", "description": "Reference to the company" },
         "userId": { "type": "string", "description": "Owner of this task record" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" }
+        "clientId": { "type": "string", "description": "Reference to the client" },
+        "serviceId": { "type": "string", "description": "Reference to the service" },
+        "serviceName": { "type": "string", "description": "Name of the service" },
+        "processId": { "type": "string", "description": "Reference to the source process/SOP" },
+        "processTitle": { "type": "string", "description": "Title of the source process" },
+        "processStepId": { "type": "string", "description": "Step ID in the source process" },
+        "processStepOrder": { "type": "integer", "description": "Step order in the process" },
+        "processStepTitle": { "type": "string", "description": "Title of the process step" },
+        "source": { "type": "string", "enum": ["manual", "project", "process"], "description": "Task creation origin" },
+        "responsibleRole": { "type": "string", "description": "Responsible role for the task" },
+        "dueDate": { "type": "string", "format": "date-time", "description": "Task due date" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update date" }
       },
       "required": ["title", "status", "priority", "companyId", "userId", "createdAt"]
+    },
+    "Process": {
+      "title": "Process",
+      "description": "Standard operating procedure (SOP) or workflow checklist",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Process title" },
+        "description": { "type": "string", "description": "Process description" },
+        "category": { "type": "string", "description": "Process category" },
+        "department": { "type": "string", "description": "Department" },
+        "serviceId": { "type": "string", "description": "Associated service ID" },
+        "serviceName": { "type": "string", "description": "Associated service name" },
+        "active": { "type": "boolean", "description": "Whether process is active" },
+        "content": { "type": "string", "description": "Detailed process documentation content" },
+        "steps": {
+          "type": "array",
+          "description": "List of checklist steps in the process",
+          "items": { "type": "object" }
+        },
+        "companyId": { "type": "string", "description": "Reference to company" },
+        "userId": { "type": "string", "description": "Owner of this process" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update date" }
+      },
+      "required": ["title", "category", "companyId", "userId", "createdAt"]
+    },
+    "Onboarding": {
+      "title": "Onboarding",
+      "description": "Client onboarding workflow execution",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string", "description": "Reference to client" },
+        "companyId": { "type": "string", "description": "Reference to company" },
+        "userId": { "type": "string", "description": "Owner of this onboarding" },
+        "status": { "type": "string", "enum": ["pending", "in_progress", "completed", "paused", "cancelled"], "description": "Onboarding status" },
+        "currentStep": { "type": "integer", "description": "Index of current step" },
+        "steps": {
+          "type": "array",
+          "description": "Steps in the onboarding process",
+          "items": { "type": "object" }
+        },
+        "startedAt": { "type": "string", "format": "date-time", "description": "Start date" },
+        "completedAt": { "type": "string", "format": "date-time", "description": "Completion date" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update date" }
+      },
+      "required": ["clientId", "companyId", "userId", "status", "createdAt"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A service offered by the agency",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Service name" },
+        "description": { "type": "string", "description": "Service description" },
+        "category": { "type": "string", "description": "Service category" },
+        "active": { "type": "boolean", "description": "Whether service is actively offered" },
+        "companyId": { "type": "string", "description": "Reference to company" },
+        "userId": { "type": "string", "description": "Owner of this service record" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update date" }
+      },
+      "required": ["name", "active", "companyId", "userId", "createdAt"]
+    },
+    "ClientService": {
+      "title": "ClientService",
+      "description": "Relationship between an existing client and an active agency service",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string", "description": "Reference to client" },
+        "serviceId": { "type": "string", "description": "Reference to service" },
+        "companyId": { "type": "string", "description": "Reference to company" },
+        "userId": { "type": "string", "description": "Owner of this record" },
+        "status": { "type": "string", "enum": ["active", "paused", "cancelled", "completed"], "description": "Client service status" },
+        "startDate": { "type": "string", "format": "date-time", "description": "Start date" },
+        "endDate": { "type": "string", "format": "date-time", "description": "End date" },
+        "notes": { "type": "string", "description": "Additional notes" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update date" }
+      },
+      "required": ["clientId", "serviceId", "companyId", "userId", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -135,6 +228,10 @@
     "commercial": { "schema": { "$ref": "CommercialStats" }, "description": "Collection of commercial stats" },
     "leads": { "schema": { "$ref": "Lead" }, "description": "Collection of sales leads" },
     "companies": { "schema": { "$ref": "Company" }, "description": "Collection of companies" },
-    "tasks": { "schema": { "$ref": "Task" }, "description": "Collection of tasks" }
+    "tasks": { "schema": { "$ref": "Task" }, "description": "Collection of tasks" },
+    "processes": { "schema": { "$ref": "Process" }, "description": "Collection of processes / SOPs" },
+    "onboardings": { "schema": { "$ref": "Onboarding" }, "description": "Collection of client onboardings" },
+    "services": { "schema": { "$ref": "Service" }, "description": "Collection of agency services" },
+    "clientServices": { "schema": { "$ref": "ClientService" }, "description": "Collection of services assigned to clients" }
   }
 }

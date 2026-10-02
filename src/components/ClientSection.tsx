@@ -7,7 +7,8 @@ import { formatCurrency, cn } from '../lib/utils';
 import { usePrivacy } from '../contexts/PrivacyContext';
 import { addClient, updateClient, deleteClient, updateContract, deleteContract, addFinancialEntry, addContract, deleteFinancialEntry } from '../services/db';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle, DollarSign, Calendar, XCircle, Ban, CreditCard, Power, Server, Clock, TrendingUp } from 'lucide-react';
+import { MoreHorizontal, UserPlus, UserMinus, Users, Briefcase, Plus, Building2, Mail, Phone, CheckCircle2, Edit2, Trash2, AlertTriangle, DollarSign, Calendar, XCircle, Ban, CreditCard, Power, Server, Clock, TrendingUp, Eye } from 'lucide-react';
+import { Client360View } from './Client360View';
 
 interface ClientSectionProps {
   clients: any[];
@@ -15,9 +16,25 @@ interface ClientSectionProps {
   contracts: any[];
   financial: any[];
   initialTab?: 'clients' | 'contracts' | 'hosting';
+  tasks?: any[];
+  services?: any[];
+  clientServices?: any[];
+  onboardings?: any[];
+  processes?: any[];
 }
 
-export function ClientSection({ clients, projects, contracts, financial, initialTab }: ClientSectionProps) {
+export function ClientSection({ 
+  clients, 
+  projects, 
+  contracts, 
+  financial, 
+  initialTab,
+  tasks = [],
+  services = [],
+  clientServices = [],
+  onboardings = [],
+  processes = []
+}: ClientSectionProps) {
   const { hideValues } = usePrivacy();
   const { selectedCompanyId, companies } = useCompany();
   const [activeSubTab, setActiveSubTab] = useState<'clients' | 'contracts' | 'hosting' | 'hosting_base'>(initialTab === 'hosting' ? 'hosting_base' : (initialTab || 'clients'));
@@ -28,6 +45,7 @@ export function ClientSection({ clients, projects, contracts, financial, initial
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [selectedClient360, setSelectedClient360] = useState<any | null>(null);
   const [selectedContractToDelete, setSelectedContractToDelete] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -356,6 +374,24 @@ export function ClientSection({ clients, projects, contracts, financial, initial
     { month: 'Abr', clients: filteredClients.length },
   ];
 
+  if (selectedClient360) {
+    return (
+      <Client360View
+        client={selectedClient360}
+        onBack={() => setSelectedClient360(null)}
+        projects={projects}
+        contracts={contracts}
+        financial={financial}
+        tasks={tasks}
+        services={services}
+        clientServices={clientServices}
+        onboardings={onboardings}
+        processes={processes}
+        companyId={selectedCompanyId || ''}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -569,14 +605,24 @@ export function ClientSection({ clients, projects, contracts, financial, initial
                         client.status === 'inactive' && "opacity-50 grayscale"
                       )}>
                         <td className="px-4 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-400">
+                          <div 
+                            onClick={() => setSelectedClient360(client)}
+                            className="flex items-center gap-3 cursor-pointer group"
+                            title="Abrir Visão 360°"
+                          >
+                            <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 group-hover:bg-violet-100 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-400 group-hover:text-violet-600 transition-colors">
                               {client.name.substring(0, 2)}
                             </div>
-                            <span className="text-sm font-semibold text-slate-900 dark:text-white">{client.name}</span>
+                            <span className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-violet-600 transition-colors">{client.name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{client.company}</td>
+                        <td 
+                          onClick={() => setSelectedClient360(client)}
+                          className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400 cursor-pointer hover:text-violet-600 transition-colors"
+                          title="Abrir Visão 360°"
+                        >
+                          {client.company}
+                        </td>
                         <td className="px-4 py-4 uppercase">
                           <button 
                             onClick={() => handleToggleClientStatus(client)}
@@ -735,6 +781,14 @@ export function ClientSection({ clients, projects, contracts, financial, initial
                               title={client.status === 'active' ? "Desativar Cliente" : "Ativar Cliente"}
                             >
                               <Power className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => setSelectedClient360(client)}
+                              className="px-2 py-1 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-lg transition-colors text-violet-700 dark:text-violet-300 font-bold text-xs flex items-center gap-1"
+                              title="Abrir Visão Cliente 360°"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">360°</span>
                             </button>
                             <button 
                               onClick={() => openHistoryModal(client)}

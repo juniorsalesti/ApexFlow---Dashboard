@@ -8,7 +8,13 @@ import {
   subscribeFinancial,
   subscribeCommercial,
   subscribeLeads,
-  subscribeTasks
+  subscribeTasks,
+  subscribeProcesses,
+  subscribeOnboardings,
+  subscribeServices,
+  subscribeClientServices,
+  seedDefaultServices,
+  seedDefaultProcesses
 } from './services/db';
 import { Sidebar } from './components/ui/Sidebar';
 import { Header } from './components/ui/Header';
@@ -22,6 +28,8 @@ import { ProjectsSection } from './components/ProjectsSection';
 import { CRMSection } from './components/CRMSection';
 import { TasksSection } from './components/TasksSection';
 import { SettingsSection } from './components/SettingsSection';
+import { OnboardingSection } from './components/OnboardingSection';
+import { ProcessesSection } from './components/ProcessesSection';
 import { Auth } from './components/Auth';
 import { CompanyProvider, useCompany } from './contexts/CompanyContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -144,8 +152,21 @@ function DashboardContent() {
   const [commercial, setCommercial] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [processes, setProcesses] = useState<any[]>([]);
+  const [onboardings, setOnboardings] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [clientServices, setClientServices] = useState<any[]>([]);
 
   useEffect(() => {
+    if (selectedCompanyId) {
+      seedDefaultServices(selectedCompanyId).catch((err) => {
+        console.warn('Idempotent service seed check:', err);
+      });
+      seedDefaultProcesses(selectedCompanyId).catch((err) => {
+        console.warn('Idempotent process seed check:', err);
+      });
+    }
+
     const unsubClients = subscribeClients(setClients, selectedCompanyId);
     const unsubProjects = subscribeProjects(setProjects, selectedCompanyId);
     const unsubContracts = subscribeContracts(setContracts, selectedCompanyId);
@@ -153,6 +174,10 @@ function DashboardContent() {
     const unsubCommercial = subscribeCommercial(setCommercial, selectedCompanyId);
     const unsubLeads = subscribeLeads(setLeads, selectedCompanyId);
     const unsubTasks = subscribeTasks(setTasks, selectedCompanyId);
+    const unsubProcesses = subscribeProcesses(setProcesses, selectedCompanyId);
+    const unsubOnboardings = subscribeOnboardings(setOnboardings, selectedCompanyId);
+    const unsubServices = subscribeServices(setServices, selectedCompanyId);
+    const unsubClientServices = subscribeClientServices(setClientServices, selectedCompanyId);
 
     return () => {
       unsubClients();
@@ -162,6 +187,10 @@ function DashboardContent() {
       unsubCommercial();
       unsubLeads();
       unsubTasks();
+      unsubProcesses();
+      unsubOnboardings();
+      unsubServices();
+      unsubClientServices();
     };
   }, [selectedCompanyId]);
 
@@ -169,14 +198,66 @@ function DashboardContent() {
     switch (activeTab) {
       case 'overview': return <OverviewSection clients={clients} projects={filteredProjects} contracts={filteredContracts} financial={filteredFinancial} allFinancial={financial} selectedMonth={selectedMonth} selectedYear={selectedYear} period={period} />;
       case 'financial': return <FinancialSection financial={filteredFinancial} allFinancial={financial} clients={clients} selectedMonth={selectedMonth} selectedYear={selectedYear} period={period} />;
-      case 'clients': return <ClientSection clients={clients} projects={projects} contracts={contracts} financial={financial} />;
-      case 'hosting': return <ClientSection clients={clients} projects={projects} contracts={contracts} financial={financial} initialTab="hosting" />;
+      case 'clients': return (
+        <ClientSection 
+          clients={clients} 
+          projects={projects} 
+          contracts={contracts} 
+          financial={financial}
+          tasks={tasks}
+          services={services}
+          clientServices={clientServices}
+          onboardings={onboardings}
+          processes={processes}
+        />
+      );
+      case 'hosting': return (
+        <ClientSection 
+          clients={clients} 
+          projects={projects} 
+          contracts={contracts} 
+          financial={financial}
+          tasks={tasks}
+          services={services}
+          clientServices={clientServices}
+          onboardings={onboardings}
+          processes={processes}
+          initialTab="hosting" 
+        />
+      );
       case 'growth': return <GrowthSection clients={clients} projects={projects} financial={filteredFinancial} allFinancial={financial} />;
       case 'operational': return <OperationalSection projects={filteredProjects} />;
+      case 'onboarding': return (
+        <OnboardingSection
+          onboardings={onboardings}
+          clients={clients}
+          services={services}
+          clientServices={clientServices}
+          companyId={selectedCompanyId || ''}
+        />
+      );
+      case 'processes': return (
+        <ProcessesSection
+          processes={processes}
+          services={services}
+          clients={clients}
+          companyId={selectedCompanyId || ''}
+        />
+      );
       case 'commercial': return <CommercialSection commercial={commercial} />;
       case 'crm': return <CRMSection leads={filteredLeads} clients={clients} projects={projects} contracts={contracts} />;
       case 'projects': return <ProjectsSection projects={filteredProjects} financial={filteredFinancial} allFinancial={financial} />;
-      case 'tasks': return <TasksSection tasks={tasks} clients={clients} projects={projects} leads={leads} />;
+      case 'tasks': return (
+        <TasksSection 
+          tasks={tasks} 
+          clients={clients} 
+          projects={projects} 
+          leads={leads} 
+          processes={processes}
+          services={services}
+          clientServices={clientServices}
+        />
+      );
       case 'settings': return <SettingsSection />;
       default: return <OverviewSection clients={clients} projects={filteredProjects} contracts={filteredContracts} financial={filteredFinancial} allFinancial={financial} selectedMonth={selectedMonth} selectedYear={selectedYear} period={period} />;
     }
@@ -186,10 +267,12 @@ function DashboardContent() {
     switch (activeTab) {
       case 'overview': return 'Visão Geral';
       case 'financial': return 'Financeiro';
-      case 'clients': return 'Gestão de Clientes';
+      case 'clients': return 'Gestão de Clientes (Cliente 360°)';
       case 'hosting': return 'Gestão de Hospedagem';
       case 'growth': return 'Crescimento & Métricas';
       case 'operational': return 'Operacional & Projetos';
+      case 'onboarding': return 'Onboarding de Clientes';
+      case 'processes': return 'Processos & Procedimentos (SOPs)';
       case 'commercial': return 'Comercial & Vendas';
       case 'crm': return 'CRM / Pipeline de Vendas';
       case 'projects': return 'Projetos (One-Time)';

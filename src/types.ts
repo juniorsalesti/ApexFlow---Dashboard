@@ -18,13 +18,19 @@ export interface ServiceRevenue {
 export interface Client {
   id: string;
   name: string;
+  company?: string;
   companyId: string;
-  revenue: number;
-  status: 'healthy' | 'attention' | 'risk';
-  service: string;
-  ltv: number;
-  cac: number;
+  revenue?: number;
+  status: 'active' | 'inactive' | 'healthy' | 'attention' | 'risk';
+  service?: string;
+  category?: 'agency' | 'hosting';
+  type?: 'recurrent' | 'project' | 'both';
+  ltv?: number;
+  cac?: number;
   joinedAt: string;
+  userId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Project {
@@ -39,6 +45,54 @@ export interface Project {
   startDate: string;
   deliveryDate?: string;
   probability?: number; // for negotiation
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'a fazer' | 'em andamento' | 'concluído' | 'todo' | 'in-progress' | 'review' | 'done' | 'pending' | 'completed' | string;
+  priority?: 'baixa' | 'média' | 'alta' | 'urgente' | 'low' | 'medium' | 'high' | 'urgent' | string;
+  companyId: string;
+  userId: string;
+  clientId?: string;
+  projectId?: string;
+  leadId?: string;
+  serviceId?: string;
+  serviceName?: string;
+  processId?: string;
+  processTitle?: string;
+  processStepId?: string;
+  processStepOrder?: number;
+  processStepTitle?: string;
+  source?: 'manual' | 'project' | 'process' | string;
+  responsible?: string;
+  responsibleRole?: string;
+  date?: string;
+  deadline?: string;
+  dueDate?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface TaskGenerationResult {
+  created: number;
+  skipped: number;
+  duplicated: number;
+  message?: string;
+}
+
+export interface BatchTaskGenerationResult {
+  totalCreated: number;
+  totalSkipped: number;
+  results: {
+    processId: string;
+    processTitle: string;
+    serviceName?: string;
+    created: number;
+    skipped: number;
+  }[];
+  message: string;
 }
 
 export interface DashboardStats {
@@ -95,4 +149,83 @@ export interface Contract {
   lastPaymentDate?: string;
   nextPaymentDate?: string;
   payments?: { [key: string]: boolean }; // e.g {"2024-04": true}
+}
+
+export interface ProcessStep {
+  id: string;
+  order: number;
+  title: string;
+  description?: string;
+  checklist?: string[];
+  estimatedMinutes?: number;
+  responsibleRole?: string;
+  required: boolean;
+  active?: boolean;
+}
+
+export interface Process {
+  id: string;
+  title: string;
+  description?: string;
+  category: string;
+  department?: string;
+  serviceId?: string;
+  serviceName?: string;
+  content?: string;
+  steps: ProcessStep[];
+  active?: boolean;
+  companyId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface OnboardingStep {
+  id: string;
+  title: string;
+  description?: string;
+  order: number;
+  completed: boolean;
+  completedAt?: string;
+  assignedTo?: string;
+}
+
+export interface Onboarding {
+  id: string;
+  clientId: string;
+  companyId: string;
+  userId: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'paused' | 'cancelled';
+  currentStep: number;
+  steps: OnboardingStep[];
+  startedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  active: boolean;
+  companyId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ClientService {
+  id: string;
+  clientId: string;
+  serviceId: string;
+  companyId: string;
+  userId: string;
+  status: 'active' | 'paused' | 'cancelled' | 'completed';
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
