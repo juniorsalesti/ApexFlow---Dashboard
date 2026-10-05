@@ -13,6 +13,7 @@ import {
   subscribeOnboardings,
   subscribeServices,
   subscribeClientServices,
+  subscribeTeamMembers,
   seedDefaultServices,
   seedDefaultProcesses
 } from './services/db';
@@ -23,6 +24,7 @@ import { FinancialSection } from './components/FinancialSection';
 import { ClientSection } from './components/ClientSection';
 import { GrowthSection } from './components/GrowthSection';
 import { OperationalSection } from './components/OperationalSection';
+import { TeamSection } from './components/TeamSection';
 import { CommercialSection } from './components/CommercialSection';
 import { ProjectsSection } from './components/ProjectsSection';
 import { CRMSection } from './components/CRMSection';
@@ -156,6 +158,7 @@ function DashboardContent() {
   const [onboardings, setOnboardings] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [clientServices, setClientServices] = useState<any[]>([]);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
 
   useEffect(() => {
     if (selectedCompanyId) {
@@ -178,6 +181,7 @@ function DashboardContent() {
     const unsubOnboardings = subscribeOnboardings(setOnboardings, selectedCompanyId);
     const unsubServices = subscribeServices(setServices, selectedCompanyId);
     const unsubClientServices = subscribeClientServices(setClientServices, selectedCompanyId);
+    const unsubTeamMembers = subscribeTeamMembers(setTeamMembers, selectedCompanyId);
 
     return () => {
       unsubClients();
@@ -191,6 +195,7 @@ function DashboardContent() {
       unsubOnboardings();
       unsubServices();
       unsubClientServices();
+      unsubTeamMembers();
     };
   }, [selectedCompanyId]);
 
@@ -222,11 +227,30 @@ function DashboardContent() {
           clientServices={clientServices}
           onboardings={onboardings}
           processes={processes}
+          teamMembers={teamMembers}
           initialTab="hosting" 
         />
       );
       case 'growth': return <GrowthSection clients={clients} projects={projects} financial={filteredFinancial} allFinancial={financial} />;
-      case 'operational': return <OperationalSection projects={filteredProjects} />;
+      case 'operational': return (
+        <OperationalSection 
+          tasks={tasks}
+          clients={clients}
+          services={services}
+          clientServices={clientServices}
+          processes={processes}
+          projects={filteredProjects}
+          leads={leads}
+          teamMembers={teamMembers}
+        />
+      );
+      case 'team': return (
+        <TeamSection
+          teamMembers={teamMembers}
+          tasks={tasks}
+          companyId={selectedCompanyId || ''}
+        />
+      );
       case 'onboarding': return (
         <OnboardingSection
           onboardings={onboardings}
@@ -256,6 +280,7 @@ function DashboardContent() {
           processes={processes}
           services={services}
           clientServices={clientServices}
+          teamMembers={teamMembers}
         />
       );
       case 'settings': return <SettingsSection />;
@@ -270,7 +295,8 @@ function DashboardContent() {
       case 'clients': return 'Gestão de Clientes (Cliente 360°)';
       case 'hosting': return 'Gestão de Hospedagem';
       case 'growth': return 'Crescimento & Métricas';
-      case 'operational': return 'Operacional & Projetos';
+      case 'operational': return 'Central de Operações';
+      case 'team': return 'Equipe';
       case 'onboarding': return 'Onboarding de Clientes';
       case 'processes': return 'Processos & Procedimentos (SOPs)';
       case 'commercial': return 'Comercial & Vendas';
@@ -378,7 +404,13 @@ function DashboardContent() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{getTitle()}</h2>
-                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">Bem-vindo de volta, aqui está o resumo da ApexFlow hoje.</p>
+                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {activeTab === 'operational' 
+                    ? 'Veja tudo que precisa acontecer na operação da ApexFlow.' 
+                    : activeTab === 'team'
+                    ? 'Gerencie os responsáveis pela operação da ApexFlow.'
+                    : 'Bem-vindo de volta, aqui está o resumo da ApexFlow hoje.'}
+                </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 md:gap-3">

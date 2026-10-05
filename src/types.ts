@@ -68,6 +68,7 @@ export interface Task {
   source?: 'manual' | 'project' | 'process' | string;
   responsible?: string;
   responsibleRole?: string;
+  assigneeId?: string;
   date?: string;
   deadline?: string;
   dueDate?: string;
@@ -229,3 +230,19 @@ export interface ClientService {
   createdAt: string;
   updatedAt?: string;
 }
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email?: string;
+  role: string;
+  active: boolean;
+  companyId: string;
+  userId: string;
+  avatarUrl?: string;
+  phone?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+

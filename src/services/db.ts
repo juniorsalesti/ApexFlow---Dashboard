@@ -12,7 +12,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
-import { Process, Onboarding, Service, ClientService, Task, TaskGenerationResult, BatchTaskGenerationResult } from '../types';
+import { Process, Onboarding, Service, ClientService, Task, TaskGenerationResult, BatchTaskGenerationResult, TeamMember } from '../types';
 
 export enum OperationType {
   CREATE = 'create',
@@ -78,6 +78,7 @@ const processesCol = 'processes';
 const onboardingsCol = 'onboardings';
 const servicesCol = 'services';
 const clientServicesCol = 'clientServices';
+const teamMembersCol = 'teamMembers';
 
 // CRUD for Companies
 export const subscribeCompanies = (callback: (data: any[]) => void) => {
@@ -438,6 +439,63 @@ export const deleteTask = async (id: string) => {
     return await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, tasksCol);
+  }
+};
+
+// CRUD for Team Members
+export const subscribeTeamMembers = (callback: (data: TeamMember[]) => void, companyId?: string | null) => {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return () => {};
+  
+  let q = query(collection(db, teamMembersCol), where('userId', '==', userId));
+  if (companyId) {
+    q = query(collection(db, teamMembersCol), where('userId', '==', userId), where('companyId', '==', companyId));
+  }
+  
+  return onSnapshot(q, (snapshot) => {
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TeamMember[];
+    callback(data);
+  }, (error) => handleFirestoreError(error, OperationType.LIST, teamMembersCol));
+};
+
+export const addTeamMember = async (data: Omit<TeamMember, 'id' | 'userId' | 'createdAt'>, companyId: string) => {
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error('User not authenticated');
+  if (!companyId) throw new Error('Company ID is required');
+  
+  try {
+    const now = new Date().toISOString();
+    return await addDoc(collection(db, teamMembersCol), { 
+      ...data, 
+      active: data.active ?? true,
+      userId, 
+      companyId,
+      createdAt: now,
+      updatedAt: now
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, teamMembersCol);
+  }
+};
+
+export const updateTeamMember = async (id: string, data: Partial<TeamMember>) => {
+  try {
+    const docRef = doc(db, teamMembersCol, id);
+    return await updateDoc(docRef, {
+      ...data,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, teamMembersCol);
+  }
+};
+
+export const deleteTeamMember = async (id: string) => {
+  try {
+    const docRef = doc(db, teamMembersCol, id);
+    return await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, teamMembersCol);
   }
 };
 

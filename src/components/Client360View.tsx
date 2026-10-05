@@ -28,7 +28,7 @@ import {
   CreditCard,
   Sparkles
 } from 'lucide-react';
-import { Client, Project, Contract, Service, ClientService, Onboarding, OnboardingStep, Process, TaskGenerationResult, BatchTaskGenerationResult } from '../types';
+import { Client, Project, Contract, Service, ClientService, Onboarding, OnboardingStep, Process, TaskGenerationResult, BatchTaskGenerationResult, TeamMember } from '../types';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Modal } from './ui/Modal';
@@ -59,6 +59,7 @@ interface Client360ViewProps {
   clientServices: ClientService[];
   onboardings: Onboarding[];
   processes?: Process[];
+  teamMembers?: TeamMember[];
   companyId: string;
 }
 
@@ -73,6 +74,7 @@ export function Client360View({
   clientServices,
   onboardings,
   processes = [],
+  teamMembers = [],
   companyId
 }: Client360ViewProps) {
   const { hideValues } = usePrivacy();
@@ -104,8 +106,13 @@ export function Client360View({
   const [taskTitle, setTaskTitle] = useState('');
   const [taskPriority, setTaskPriority] = useState('média');
   const [taskResponsible, setTaskResponsible] = useState('');
+  const [taskResponsibleRole, setTaskResponsibleRole] = useState('');
+  const [taskAssigneeId, setTaskAssigneeId] = useState('');
   const [taskDeadline, setTaskDeadline] = useState('');
   const [savingTask, setSavingTask] = useState(false);
+
+  // Map of team members
+  const teamMemberMap = useMemo(() => new Map(teamMembers.map(m => [m.id, m])), [teamMembers]);
 
   // Step modal for Onboarding
   const [isNewStepModalOpen, setIsNewStepModalOpen] = useState(false);

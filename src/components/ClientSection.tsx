@@ -21,6 +21,7 @@ interface ClientSectionProps {
   clientServices?: any[];
   onboardings?: any[];
   processes?: any[];
+  teamMembers?: any[];
 }
 
 export function ClientSection({ 
@@ -33,7 +34,8 @@ export function ClientSection({
   services = [],
   clientServices = [],
   onboardings = [],
-  processes = []
+  processes = [],
+  teamMembers = []
 }: ClientSectionProps) {
   const { hideValues } = usePrivacy();
   const { selectedCompanyId, companies } = useCompany();
@@ -387,6 +389,7 @@ export function ClientSection({
         clientServices={clientServices}
         onboardings={onboardings}
         processes={processes}
+        teamMembers={teamMembers}
         companyId={selectedCompanyId || ''}
       />
     );

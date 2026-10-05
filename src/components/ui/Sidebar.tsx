@@ -41,7 +41,8 @@ const navGroups: NavGroup[] = [
   {
     groupLabel: 'OPERAÇÃO',
     items: [
-      { id: 'operational', label: 'Operacional', icon: Briefcase },
+      { id: 'operational', label: 'Central de Operações', icon: Briefcase, badge: 'Central' },
+      { id: 'team', label: 'Equipe', icon: Users, badge: 'Novo' },
       { id: 'onboarding', label: 'Onboarding', icon: UserCheck, badge: 'Novo' },
       { id: 'processes', label: 'Processos / SOPs', icon: FileSpreadsheet, badge: 'Novo' },
       { id: 'projects', label: 'Projetos', icon: Briefcase },

@@ -25,7 +25,7 @@ import { Badge } from './ui/Badge';
 import { StatCard } from './ui/StatCard';
 import { useCompany } from '../contexts/CompanyContext';
 import { addTask, updateTask, deleteTask, generateTasksFromProcess } from '../services/db';
-import { Process, Service, ClientService, TaskGenerationResult } from '../types';
+import { Process, Service, ClientService, TaskGenerationResult, TeamMember } from '../types';
 import { 
   Plus, 
   MoreVertical, 
@@ -70,6 +70,7 @@ interface TasksSectionProps {
   processes?: Process[];
   services?: Service[];
   clientServices?: ClientService[];
+  teamMembers?: TeamMember[];
 }
 
 export function TasksSection({ 
@@ -79,7 +80,8 @@ export function TasksSection({
   leads,
   processes = [],
   services = [],
-  clientServices = []
+  clientServices = [],
+  teamMembers = []
 }: TasksSectionProps) {
   const { selectedCompanyId, companies } = useCompany();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -94,6 +96,7 @@ export function TasksSection({
   const [sourceFilter, setSourceFilter] = useState<'all' | 'process' | 'manual' | 'project'>('all');
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [memberFilter, setMemberFilter] = useState<string>('all');
 
   // Generator Modal State
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
@@ -107,6 +110,8 @@ export function TasksSection({
     title: '',
     description: '',
     responsible: '',
+    responsibleRole: '',
+    assigneeId: '',
     priority: 'média',
     status: 'a fazer',
     date: DAYS[0],
@@ -150,6 +155,15 @@ export function TasksSection({
         return false;
       }
 
+      // Member filter
+      if (memberFilter !== 'all') {
+        if (memberFilter === 'unassigned') {
+          if (task.assigneeId) return false;
+        } else if (task.assigneeId !== memberFilter) {
+          return false;
+        }
+      }
+
       // Search query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
@@ -158,20 +172,25 @@ export function TasksSection({
         const respMatch = (task.responsible || '').toLowerCase().includes(query);
         const roleMatch = (task.responsibleRole || '').toLowerCase().includes(query);
         const procMatch = (task.processTitle || '').toLowerCase().includes(query);
+        const assignedMember = task.assigneeId ? teamMembers.find(m => m.id === task.assigneeId) : undefined;
+        const memberMatch = assignedMember && (
+          (assignedMember.name || '').toLowerCase().includes(query) ||
+          (assignedMember.role || '').toLowerCase().includes(query)
+        );
         const clientObj = clients.find(c => c.id === task.clientId);
         const clientMatch = clientObj && (
           (clientObj.company || '').toLowerCase().includes(query) ||
           (clientObj.name || '').toLowerCase().includes(query)
         );
 
-        if (!titleMatch && !descMatch && !respMatch && !roleMatch && !procMatch && !clientMatch) {
+        if (!titleMatch && !descMatch && !respMatch && !roleMatch && !procMatch && !clientMatch && !memberMatch) {
           return false;
         }
       }
 
       return true;
     });
-  }, [tasks, sourceFilter, clientFilter, priorityFilter, searchQuery, clients]);
+  }, [tasks, sourceFilter, clientFilter, priorityFilter, memberFilter, searchQuery, clients, teamMembers]);
 
   const metrics = useMemo(() => {
     const total = tasks.length;
@@ -507,12 +526,28 @@ export function TasksSection({
             <option value="baixa">Baixa</option>
           </select>
 
-          {(sourceFilter !== 'all' || clientFilter !== 'all' || priorityFilter !== 'all' || searchQuery) && (
+          {/* Member Filter */}
+          {teamMembers.length > 0 && (
+            <select
+              value={memberFilter}
+              onChange={(e) => setMemberFilter(e.target.value)}
+              className="text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-violet-500"
+            >
+              <option value="all">Equipe: Todos</option>
+              <option value="unassigned">Não atribuídas</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
+              ))}
+            </select>
+          )}
+
+          {(sourceFilter !== 'all' || clientFilter !== 'all' || priorityFilter !== 'all' || memberFilter !== 'all' || searchQuery) && (
             <button
               onClick={() => {
                 setSourceFilter('all');
                 setClientFilter('all');
                 setPriorityFilter('all');
+                setMemberFilter('all');
                 setSearchQuery('');
               }}
               className="text-xs text-rose-500 hover:text-rose-600 font-semibold px-2 py-1"
@@ -539,6 +574,7 @@ export function TasksSection({
               title={day} 
               tasks={filteredTasks.filter(t => t.date === day)}
               clients={clients}
+              teamMembers={teamMembers}
               onQuickAdd={() => {
                 setFormData({ ...formData, date: day });
                 setIsModalOpen(true);
@@ -549,6 +585,8 @@ export function TasksSection({
                   title: task.title,
                   description: task.description || '',
                   responsible: task.responsible || '',
+                  responsibleRole: task.responsibleRole || '',
+                  assigneeId: task.assigneeId || '',
                   priority: task.priority || 'média',
                   status: task.status || 'a fazer',
                   date: task.date,
@@ -578,6 +616,7 @@ export function TasksSection({
             <TaskCard 
               task={tasks.find(t => t.id === activeId)} 
               clients={clients}
+              teamMembers={teamMembers}
               isOverlay 
             />
           ) : null}
@@ -650,17 +689,59 @@ export function TasksSection({
             />
           </div>
 
+          {teamMembers.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
+                Membro da Equipe (Assignee)
+              </label>
+              <select
+                value={formData.assigneeId}
+                onChange={e => {
+                  const mId = e.target.value;
+                  const member = teamMembers.find(m => m.id === mId);
+                  setFormData(prev => ({
+                    ...prev,
+                    assigneeId: mId,
+                    responsible: member ? member.name : prev.responsible,
+                    responsibleRole: (member && !prev.responsibleRole) ? member.role : prev.responsibleRole
+                  }));
+                }}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:text-white transition-colors"
+              >
+                <option value="">Nenhum membro atribuído</option>
+                {teamMembers.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} — {m.role} {!m.active ? '(Inativo)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Responsável</label>
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Responsável (Nome)</label>
               <input
                 type="text"
                 value={formData.responsible}
                 onChange={e => setFormData({ ...formData, responsible: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:text-white transition-colors"
-                placeholder="Ex: Gestor de Tráfego / Nome"
+                placeholder="Ex: Carlos Silva, Equipe"
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Papel Operacional</label>
+              <input
+                type="text"
+                value={formData.responsibleRole}
+                onChange={e => setFormData({ ...formData, responsibleRole: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:text-white transition-colors"
+                placeholder="Ex: Gestor de Tráfego, Designer"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Prioridade</label>
               <select
@@ -672,6 +753,18 @@ export function TasksSection({
                 <option value="média">Média</option>
                 <option value="alta">Alta</option>
                 <option value="urgente">Urgente</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Status</label>
+              <select
+                value={formData.status}
+                onChange={e => setFormData({ ...formData, status: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:text-white transition-colors"
+              >
+                <option value="a fazer">A Fazer</option>
+                <option value="em andamento">Em Andamento</option>
+                <option value="concluído">Concluído</option>
               </select>
             </div>
           </div>
@@ -948,7 +1041,7 @@ export function TasksSection({
   );
 }
 
-function TaskColumn({ id, title, tasks, clients, onEdit, onDelete, onStatusToggle, onQuickAdd, onDuplicate }: any) {
+function TaskColumn({ id, title, tasks, clients, teamMembers = [], onEdit, onDelete, onStatusToggle, onQuickAdd, onDuplicate }: any) {
   const { setNodeRef } = useSortable({ id });
   const dayAbbr = title.split('-')[0].substring(0, 3);
 
@@ -981,6 +1074,7 @@ function TaskColumn({ id, title, tasks, clients, onEdit, onDelete, onStatusToggl
               key={task.id} 
               task={task} 
               clients={clients}
+              teamMembers={teamMembers}
               onEdit={onEdit} 
               onDelete={onDelete}
               onStatusToggle={onStatusToggle}
@@ -1001,7 +1095,7 @@ function TaskColumn({ id, title, tasks, clients, onEdit, onDelete, onStatusToggl
   );
 }
 
-function TaskCard({ task, clients = [], onEdit, onDelete, onStatusToggle, onDuplicate, isOverlay }: any) {
+function TaskCard({ task, clients = [], teamMembers = [], onEdit, onDelete, onStatusToggle, onDuplicate, isOverlay }: any) {
   const {
     attributes,
     listeners,
@@ -1032,6 +1126,7 @@ function TaskCard({ task, clients = [], onEdit, onDelete, onStatusToggle, onDupl
   const isDelayed = task.status !== 'concluído' && (task.deadline || task.dueDate) && (task.deadline || task.dueDate) < today;
 
   const clientObj = clients.find((c: any) => c.id === task.clientId);
+  const assignedMember = task.assigneeId ? teamMembers.find((m: any) => m.id === task.assigneeId) : null;
 
   return (
     <div
@@ -1121,14 +1216,22 @@ function TaskCard({ task, clients = [], onEdit, onDelete, onStatusToggle, onDupl
         )}
 
         <div className="space-y-1.5">
-          {task.responsibleRole && (
+          {assignedMember && (
+            <div className="flex items-center gap-1.5 text-[10px] text-violet-700 dark:text-violet-300 font-semibold bg-violet-50 dark:bg-violet-950/40 px-2 py-0.5 rounded-md border border-violet-200 dark:border-violet-800">
+              <User className="w-3 h-3 text-violet-500 shrink-0" />
+              <span className="truncate">{assignedMember.name}</span>
+              {task.responsibleRole && <span className="opacity-75 font-normal shrink-0">({task.responsibleRole})</span>}
+            </div>
+          )}
+
+          {!assignedMember && task.responsibleRole && (
             <div className="flex items-center gap-1.5 text-[10px] text-violet-600 dark:text-violet-400 font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
               <span>{task.responsibleRole}</span>
             </div>
           )}
 
-          {task.responsible && task.responsible !== task.responsibleRole && (
+          {!assignedMember && task.responsible && task.responsible !== task.responsibleRole && (
             <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
               <User className="w-3 h-3" />
               <span className="font-medium">{task.responsible}</span>

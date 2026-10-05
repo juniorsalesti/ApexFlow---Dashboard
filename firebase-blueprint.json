@@ -131,7 +131,9 @@
         "processStepOrder": { "type": "integer", "description": "Step order in the process" },
         "processStepTitle": { "type": "string", "description": "Title of the process step" },
         "source": { "type": "string", "enum": ["manual", "project", "process"], "description": "Task creation origin" },
+        "responsible": { "type": "string", "description": "Display name of the responsible person" },
         "responsibleRole": { "type": "string", "description": "Responsible role for the task" },
+        "assigneeId": { "type": "string", "description": "Reference to teamMembers" },
         "dueDate": { "type": "string", "format": "date-time", "description": "Task due date" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" },
         "updatedAt": { "type": "string", "format": "date-time", "description": "Update date" }
@@ -218,6 +220,25 @@
         "updatedAt": { "type": "string", "format": "date-time", "description": "Update date" }
       },
       "required": ["clientId", "serviceId", "companyId", "userId", "status", "createdAt"]
+    },
+    "TeamMember": {
+      "title": "TeamMember",
+      "description": "An operational team member of the agency",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Member name" },
+        "email": { "type": "string", "description": "Member email" },
+        "role": { "type": "string", "description": "Role / job title in the agency" },
+        "active": { "type": "boolean", "description": "Whether the member is active" },
+        "phone": { "type": "string", "description": "Member phone" },
+        "notes": { "type": "string", "description": "Additional notes" },
+        "avatarUrl": { "type": "string", "description": "Avatar image URL" },
+        "companyId": { "type": "string", "description": "Reference to company" },
+        "userId": { "type": "string", "description": "Owner of this record" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation date" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update date" }
+      },
+      "required": ["name", "role", "active", "companyId", "userId", "createdAt"]
     }
   },
   "firestore": {
@@ -232,6 +253,7 @@
     "processes": { "schema": { "$ref": "Process" }, "description": "Collection of processes / SOPs" },
     "onboardings": { "schema": { "$ref": "Onboarding" }, "description": "Collection of client onboardings" },
     "services": { "schema": { "$ref": "Service" }, "description": "Collection of agency services" },
-    "clientServices": { "schema": { "$ref": "ClientService" }, "description": "Collection of services assigned to clients" }
+    "clientServices": { "schema": { "$ref": "ClientService" }, "description": "Collection of services assigned to clients" },
+    "teamMembers": { "schema": { "$ref": "TeamMember" }, "description": "Collection of operational agency team members" }
   }
 }
